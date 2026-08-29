@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="A lantern casting light through fog">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400230" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f4a259" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#f4a259" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="230" r="300" fill="url(#g400230)"/>
+  <g stroke="#f4a259" stroke-width="3" fill="none" opacity="0.9">
+    <path d="M370 180 h60 v20 h-60z"/>
+    <path d="M360 200 h80 l-12 120 h-56z"/>
+    <path d="M400 150 v30"/>
+  </g>
+  <circle cx="400" cy="255" r="26" fill="#f4a259" opacity="0.85"/>
+  <g stroke="#f7f4ef" stroke-width="2" opacity="0.18">
+    <path d="M60 400 q120 -30 240 0 t240 0 t200 -10"/>
+    <path d="M40 430 q140 -25 260 0 t260 0 t180 -8"/>
+    <path d="M80 460 q120 -20 220 0 t240 0 t180 -6"/>
+  </g>
+</svg>

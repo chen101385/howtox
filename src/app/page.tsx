@@ -1,35 +1,18 @@
-import { activeClient } from "@/config/active";
-import { Header } from "@/sections/Header";
-import { Hero } from "@/sections/Hero";
-import { Footer } from "@/sections/Footer";
+import { client } from "@/config/active";
+import { PageRenderer } from "@/sections/PageRenderer";
 
 /**
- * Home page. Assembles the site from the active client's config.
+ * Home page.
  *
- * Phase 1 renders Header + Hero + Footer. Subsequent phases drop in
- * Services, About, Testimonials, Pricing, FAQ, CTA and the booking embed —
- * each guarded by `config.sections.*` / `config.modules.*` so it only appears
- * when that client has configured it.
+ * Contains no section list of its own — the active client's `pages.home`
+ * composition decides what renders and in what order. A brochure client and a
+ * marketplace client run this identical file.
+ *
+ * Dynamic because marketplace sections read a schedule generated relative to now;
+ * prerendering would freeze "live tonight" at build time.
  */
-export default function Home() {
-  const { brand, nav, sections, contact } = activeClient;
+export const dynamic = "force-dynamic";
 
-  return (
-    <>
-      <Header brand={brand} nav={nav} />
-      <main>
-        <Hero hero={sections.hero} />
-        {/* Next phases mount here:
-            {sections.services && <Services ... />}
-            {sections.about && <About ... />}
-            {sections.testimonials && <Testimonials ... />}
-            {sections.pricing && <Pricing ... />}
-            {sections.faq && <Faq ... />}
-            {modules?.booking?.enabled && <Booking ... />}
-            {sections.cta && <CtaBand ... />}
-        */}
-      </main>
-      <Footer brand={brand} contact={contact} />
-    </>
-  );
+export default function Home() {
+  return <PageRenderer composition={client.config.pages.home} client={client} />;
 }

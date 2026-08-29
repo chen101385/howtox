@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="A grid of clues connected by lines">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400250" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b7fd1" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8b7fd1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="250" r="300" fill="url(#g400250)"/>
+  <g fill="#1d1930" stroke="#f7f4ef" stroke-opacity="0.3" stroke-width="2">
+    <rect x="160" y="130" width="105" height="75" rx="10"/>
+    <rect x="290" y="130" width="105" height="75" rx="10"/>
+    <rect x="420" y="130" width="105" height="75" rx="10"/>
+    <rect x="550" y="130" width="105" height="75" rx="10"/>
+    <rect x="160" y="230" width="105" height="75" rx="10"/>
+    <rect x="290" y="230" width="105" height="75" rx="10"/>
+    <rect x="420" y="230" width="105" height="75" rx="10"/>
+    <rect x="550" y="230" width="105" height="75" rx="10"/>
+    <rect x="160" y="330" width="105" height="75" rx="10"/>
+    <rect x="290" y="330" width="105" height="75" rx="10"/>
+    <rect x="420" y="330" width="105" height="75" rx="10"/>
+    <rect x="550" y="330" width="105" height="75" rx="10"/>
+  </g>
+  <g stroke="#f4a259" stroke-width="3" opacity="0.85" fill="none">
+    <path d="M212 205 L342 305 L472 205 L602 305"/>
+  </g>
+  <g fill="#7fd1c1">
+    <circle cx="212" cy="205" r="8"/><circle cx="342" cy="305" r="8"/>
+    <circle cx="472" cy="205" r="8"/><circle cx="602" cy="305" r="8"/>
+  </g>
+  <g>
+    <rect x="0" y="0" width="220" height="40" fill="#f4a259"/>
+    <text x="16" y="26" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#141122">SAMPLE</text>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="A single card held up in a spotlight">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400220" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f4a259" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#f4a259" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="220" r="260" fill="url(#g400220)"/>
+  <rect x="330" y="130" width="140" height="200" rx="12" fill="#1d1930" stroke="#f4a259" stroke-width="3"/>
+  <text x="400" y="245" font-family="Inter, sans-serif" font-size="72" font-weight="700" fill="#f4a259" text-anchor="middle">?</text>
+  <g stroke="#f7f4ef" stroke-width="3" fill="none" opacity="0.7">
+    <path d="M330 360 q70 60 140 0"/>
+    <path d="M355 380 v40"/><path d="M400 392 v38"/><path d="M445 380 v40"/>
+  </g>
+  <g>
+    <rect x="0" y="0" width="220" height="40" fill="#f4a259"/>
+    <text x="16" y="26" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#141122">SAMPLE</text>
+  </g>
+</svg>

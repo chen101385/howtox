@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="Overlapping speech bubbles in bright colors">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400250" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d17f9e" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#d17f9e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="250" r="300" fill="url(#g400250)"/>
+  <g stroke-width="3" fill-opacity="0.25">
+    <path d="M150 140 h250 a20 20 0 0 1 20 20 v110 a20 20 0 0 1 -20 20 h-160 l-50 45 v-45 h-40 a20 20 0 0 1 -20 -20 v-110 a20 20 0 0 1 20 -20z" fill="#7fd1c1" stroke="#7fd1c1"/>
+    <path d="M400 250 h230 a20 20 0 0 1 20 20 v100 a20 20 0 0 1 -20 20 h-150 l-45 40 v-40 h-35 a20 20 0 0 1 -20 -20 v-100 a20 20 0 0 1 20 -20z" fill="#f4a259" stroke="#f4a259"/>
+  </g>
+</svg>

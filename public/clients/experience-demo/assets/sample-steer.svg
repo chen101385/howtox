@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="A branching path splitting into many directions">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400250" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b7fd1" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8b7fd1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="250" r="320" fill="url(#g400250)"/>
+  <g stroke="#7fd1c1" stroke-width="3" fill="none" opacity="0.9">
+    <path d="M120 250 H300"/>
+    <path d="M300 250 L440 150"/>
+    <path d="M300 250 L440 350"/>
+    <path d="M440 150 L600 100"/>
+    <path d="M440 150 L600 200"/>
+    <path d="M440 350 L600 300"/>
+    <path d="M440 350 L600 400"/>
+  </g>
+  <g fill="#f4a259">
+    <circle cx="300" cy="250" r="12"/><circle cx="440" cy="150" r="10"/>
+    <circle cx="440" cy="350" r="10"/><circle cx="600" cy="100" r="8"/>
+    <circle cx="600" cy="200" r="8"/><circle cx="600" cy="300" r="8"/>
+    <circle cx="600" cy="400" r="8"/>
+  </g>
+  <g>
+    <rect x="0" y="0" width="220" height="40" fill="#f4a259"/>
+    <text x="16" y="26" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#141122">SAMPLE</text>
+  </g>
+</svg>

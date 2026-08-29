@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="32" viewBox="0 0 168 32" role="img" aria-label="Lantern Rooms">
+  <g stroke="#f4a259" stroke-width="2" fill="none">
+    <path d="M8 9 h12 v3 H8z"/>
+    <path d="M6 12 h16 l-2.5 14 h-11z"/>
+    <path d="M14 4 v5"/>
+  </g>
+  <circle cx="14" cy="19" r="4.5" fill="#f4a259"/>
+  <text x="32" y="22" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="700" fill="#f7f4ef">Lantern Rooms</text>
+</svg>

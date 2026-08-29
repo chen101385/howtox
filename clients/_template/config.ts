@@ -5,7 +5,9 @@ import type { SiteConfig } from "@/config/types";
  * Anything optional can be deleted; the matching section simply won't render.
  */
 const config: SiteConfig = {
-  slug: "_template",
+  // Kept kebab-case so the scaffold itself passes config validation; the folder
+  // is named `_template` only so it sorts first and reads as a scaffold.
+  slug: "template",
 
   brand: {
     name: "Your Business",

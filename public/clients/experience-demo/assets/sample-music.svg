@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="An acoustic guitar resting against a warm-lit wall">
+  <rect width="800" height="500" fill="#141122"/>
+  <defs>
+    <radialGradient id="g400250" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f4a259" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f4a259" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="400" cy="250" r="300" fill="url(#g400250)"/>
+  <g fill="none" stroke="#f7f4ef" stroke-width="3" opacity="0.9">
+    <ellipse cx="400" cy="330" rx="110" ry="120"/>
+    <ellipse cx="400" cy="230" rx="78" ry="80"/>
+    <circle cx="400" cy="300" r="34" fill="#141122"/>
+    <path d="M400 150 v-70"/><path d="M370 80 h60 v-30 h-60z"/>
+  </g>
+  <g stroke="#7fd1c1" stroke-width="1.5" opacity="0.8">
+    <path d="M382 150 V 430"/>
+    <path d="M391 150 V 430"/>
+    <path d="M400 150 V 430"/>
+    <path d="M409 150 V 430"/>
+    <path d="M418 150 V 430"/>
+  </g>
+  <g>
+    <rect x="0" y="0" width="220" height="40" fill="#f4a259"/>
+    <text x="16" y="26" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#141122">SAMPLE</text>
+  </g>
+</svg>
