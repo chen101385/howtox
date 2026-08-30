@@ -11,6 +11,7 @@
  */
 
 import type { Money } from "@/domain/money";
+import type { Role } from "@/domain/identity";
 import type { ParticipantRole, ParticipantPermissions } from "@/domain/session";
 import type { BookingId, RoomId, TenantId, UserId } from "@/domain/ids";
 
@@ -26,11 +27,16 @@ export type ProviderInfo = {
 
 /* ------------------------------- Auth ----------------------------------- */
 
+/**
+ * The authenticated caller, in public/pseudonymous terms only. A Viewer is
+ * passed widely through the app and must never become a carrier for legal name,
+ * email, phone or payout identity — that data stays in `UserPrivate`.
+ */
 export type Viewer = {
   userId: UserId;
   displayName: string;
   handle: string;
-  roles: ("guest" | "host" | "moderator" | "admin")[];
+  roles: Role[];
 };
 
 export interface AuthProvider {
@@ -39,6 +45,11 @@ export interface AuthProvider {
   getViewer(): Promise<Viewer | null>;
   /** Demo-only affordance for switching seeded personas. */
   listDemoViewers?(): Promise<Viewer[]>;
+  /**
+   * Where to send someone who needs to sign in, or null when the adapter has no
+   * sign-in surface (the demo adapter never signs anyone out).
+   */
+  signInPath?(): string | null;
 }
 
 /* ----------------------------- Commerce --------------------------------- */

@@ -19,6 +19,7 @@
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "drizzle-orm": "^0.45.2",
     "next": "^14.2.35",

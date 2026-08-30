@@ -13,6 +13,7 @@ experiences. Which one a build serves is decided by `NEXT_PUBLIC_CLIENT`.
 ```bash
 npm run dev                                   # default client (teen-edge)
 NEXT_PUBLIC_CLIENT=experience-demo npm run dev
+AUTH_PROVIDER=supabase npm run dev            # real sign-in (needs credentials)
 npm run typecheck                             # tsc --noEmit
 npm run lint                                  # eslint (next lint)
 npm test                                      # vitest
@@ -73,7 +74,9 @@ Never build a public view by spreading a `UserPrivate`. Never let
 
 **8. Route guards are not authorization.**
 `requireCapability()` says what the product offers, not who may see it. Anything
-sensitive needs an additional server-side check against the viewer.
+sensitive needs an additional server-side check against the viewer. Roles come
+from `users.roles` via the auth provider — never from an identity provider's
+token metadata, which the signed-in user can write.
 
 **9. State changes go through the state machines.**
 Use `bookingMachine` / `sessionMachine` / `incidentMachine` rather than assigning
@@ -89,7 +92,15 @@ not components.
 compiles routes into separate bundles — a module-scoped `let` gives each route
 its own store, and state silently stops being shared.
 
-**12. Two data adapters, selected by `DATABASE_URL`.**
+**12. New tables need a line in the RLS migration.**
+Supabase serves every `public` schema table through PostgREST using the anon key
+that ships to the browser. `drizzle/0002_lock_down_public_api.sql` revokes those
+grants and enables RLS. A table added later is exposed by default until it gets
+the same treatment — add `ALTER TABLE … ENABLE ROW LEVEL SECURITY` in a new
+migration, and do not add a browser-side Supabase data client expecting to read
+these tables.
+
+**13. Two data adapters, selected by `DATABASE_URL`.**
 Unset -> in-memory; set -> Postgres/Drizzle. Both must satisfy the same
 interfaces in `src/data/repositories.ts`, so a change to one usually needs the
 other. Every repository method takes `tenantId` and every query must filter on

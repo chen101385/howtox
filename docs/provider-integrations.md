@@ -95,43 +95,75 @@ an authorization check without providing one.
 - A decision about what a signed-out viewer sees. `getViewer()` returning `null`
   is currently an unexercised path.
 
-### The Supabase adapter — what exists and what does not
+### The Supabase adapter
 
-`src/providers/supabase/` is the first live adapter in the codebase. Setting
-`integrations.auth.provider = "supabase"` on a client, plus
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DATABASE_URL`,
-makes `getProviders().auth` a `SupabaseAuthProvider` instead of the demo one.
-All three are required and startup fails if any is missing — roles resolve from
-our own `users` table, so Supabase auth on the in-memory adapter would reject
-every sign-in while looking correctly configured.
+`src/providers/supabase/` is the first live adapter in the codebase.
 
-**Implemented, and worth understanding before you change it:**
+| File | Responsibility |
+|---|---|
+| `session.ts` | Cookie transport, delegated to `@supabase/ssr` |
+| `auth.ts` | The adapter — verifies the session, builds the `Viewer` |
+| `provisioning.ts` | Creates the application account on first sign-in |
+| `index.ts` | Composition and configuration |
 
-- **Tokens are verified server-side on every call.** `getViewer()` calls
-  `client.auth.getUser(token)` rather than decoding the JWT locally. A local
-  decode proves only that *something* signed the token, and this value gates
-  bookings and payouts. If it becomes a hot path, cache per request — do not
-  swap in an unverified decode.
-- **Roles come from our own `users` table**, resolved by `externalAuthId`, never
-  from `user_metadata`. Supabase metadata is client-writable in some
-  configurations, so trusting a `role` claim there would let a guest promote
-  itself to moderator.
-- **The token is read from `Authorization: Bearer`.** Supabase's browser session
-  cookie is chunked and its encoding is an `@supabase/ssr` implementation
-  detail; hand-parsing it would be guesswork, so the adapter uses the one
-  contract that is fully specified.
+Surfaces: `/sign-in`, `/auth/callback`, `POST /api/auth/sign-in`,
+`POST /api/auth/sign-out`, and `src/middleware.ts` for session refresh. All of
+them 404 unless the active client selects this provider.
 
-**Not implemented — this is not a working login:**
+**Turning it on.** `AUTH_PROVIDER=supabase` (or `integrations.auth.provider` in
+the client config) plus `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DATABASE_URL`. All four are required
+together and startup fails if any is missing: accounts and roles live in our own
+database, so Supabase auth on the in-memory adapter would reject every sign-in
+while looking correctly configured. In the Supabase dashboard, the redirect
+allow-list must include `<origin>/auth/callback`.
 
-- No sign-in UI, no OAuth callback route, no session refresh.
-- No provisioning of an application `users` row on first login. A verified
-  Supabase identity with no matching row logs a warning and resolves to `null`.
-- Consequently a browser visitor is always treated as signed out. Only a caller
-  that already holds an access token (API client, server-to-server) can
-  authenticate today.
+`AUTH_PROVIDER` overrides the client config because *which* auth provider is a
+property of the deployment rather than the brand — the same client config has to
+work as a credential-free demo and as a live deployment.
 
-The adapter has not been exercised against a live Supabase project — it
-typechecks and its dependencies are wired, and that is the whole of the claim.
+**Design decisions worth understanding before changing them:**
+
+- **The session is verified against the auth server on every call.**
+  `getUser()`, never `getSession()` — the latter returns whatever the cookie
+  claims, unverified, and this value gates bookings and payouts. Cache per
+  request if it becomes hot; do not swap in a local decode.
+- **Roles come from our own `users.roles` column**, resolved by
+  `externalAuthId`, never from `user_metadata` — which the signed-in user can
+  write, so a `role` claim there is self-granted. Unrecognized role strings are
+  dropped rather than trusted, and `guest` is always present so a signed-in user
+  is never role-less. There is a test that sets `{"role":"admin"}` on the token
+  and asserts the viewer is still a guest.
+- **Nothing in the sign-up path can grant `host`, `moderator` or `admin`.** New
+  accounts get `guest`. Elevated roles are deliberate, out-of-band grants.
+- **Two Supabase clients, deliberately separated.** Server Components cannot set
+  cookies, so render paths use a read-only client and middleware persists token
+  rotation; route handlers use a mutable one. Getting this backwards is the
+  classic failure mode — sign-in appears to succeed, no cookie is written, and
+  the user bounces back to the form.
+- **Magic link, not passwords.** Nothing stores, hashes, resets or leaks a
+  password, and there is no credential to stuff. The cost is a dependency on
+  email deliverability. Adding Google or Apple later is additive: a second route
+  calling `signInWithOAuth` onto the same callback.
+- **The sign-in response is identical whether or not the account exists.**
+  Otherwise the endpoint is an account-enumeration oracle.
+- **`?next=` is validated by `safeRedirectPath()`.** A sign-in link genuinely
+  from our domain that lands on someone else's page is a phishing amplifier;
+  `src/lib/redirect.test.ts` covers the hostile inputs.
+
+**Provisioning** (`ensureUser`) runs on every sign-in and is idempotent. It
+adopts an existing unlinked account with the same address — safe only because
+Supabase verified it, and never on an unverified address, which would be an
+account-takeover path. Concurrent first sign-ins cannot create two accounts: the
+unique index on `(tenant_id, external_auth_id)` decides, and the loser re-reads
+rather than check-then-inserting.
+
+**What is tested, and what is not.** Provisioning, role resolution and the
+privacy boundary run against real Postgres via PGlite, with Supabase's own token
+verification stubbed — asserting that `getUser()` works would be testing
+Supabase. Not tested: the browser round trip against a live project. Email
+delivery, the redirect allow-list and cookie behavior on a real domain are
+unverified until someone signs in for real.
 
 ---
 
@@ -365,8 +397,8 @@ of the server process.
 
 | Capability | What exists now | What production requires |
 |---|---|---|
-| Sign-in / sessions | `DemoAuthProvider` returns a seeded persona; never `null`. Supabase adapter verifies a Bearer token but has no login flow | Sign-in UI, OAuth callback, session refresh, first-login user provisioning, CSRF, sign-out |
-| Authorization | `viewer.userId === booking.guestUserId` checks on 2 API routes; capability guards that 404 | Server-side authorization on every sensitive read and write, real roles for `/ops/*` |
+| Sign-in / sessions | `DemoAuthProvider` returns a seeded persona; never `null`. Supabase adapter: magic-link sign-in, cookie sessions, middleware refresh, first-login provisioning | Verification against a live project; social sign-in; account recovery beyond "request another link" |
+| Authorization | Roles resolve from `users.roles`; `viewer.userId === booking.guestUserId` checks on 2 API routes; capability guards that 404 | Server-side role checks on `/ops/*`, and authorization on every sensitive read and write |
 | Identity verification | `VerificationState` field only; nothing can set it legitimately | KYC/ID vendor, document handling, retention policy |
 | Charging a guest | `demo_charge_*` reference, no money moves | PSP integration, webhooks, idempotency keys, tax |
 | Refunds | `demo_refund_*` reference, no money moves | Refund + chargeback handling mapped onto ledger entries |
@@ -425,10 +457,26 @@ report category, and both ledger enums. Add a domain value, forget the schema,
 and a test fails instead of a production insert.
 
 **Tenant isolation.** `tenant_id` is non-null on all 12 tables, part of every
-index, and in the `WHERE` clause of every query. This is *not yet* row-level
-security: isolation currently depends on the adapter being correct, which is
-weaker than the database refusing to return the row. RLS policies are the next
-step, and they need the auth integration below to be real first.
+index, and in the `WHERE` clause of every query. Isolation between tenants
+depends on the adapter being correct — that part is still application-enforced,
+which is weaker than the database refusing to return the row.
+
+**The public API is closed** (`drizzle/0002_lock_down_public_api.sql`). This one
+matters more than it sounds: Supabase publishes every `public` schema table
+through PostgREST, reachable with the anon key that ships to the browser. Left
+at its default, `GET /rest/v1/users?select=*` returns every legal name, email,
+phone number and payout reference in the database. The migration revokes the
+`anon` and `authenticated` grants and enables RLS with no permissive policies,
+so both the grant check and the row check deny. The app is unaffected because it
+connects as the table owner, and owners are exempt from RLS unless
+`FORCE ROW LEVEL SECURITY` is set.
+
+That is a lock, not an authorization model. Per-row policies would require
+connecting as `authenticated` and passing the user's JWT to Postgres — a real
+architectural change, not a migration. **Consequence:** a browser-side Supabase
+data client will read nothing from these tables, by design. Data reaches the
+browser through server components and route handlers, which is where the privacy
+rules in `src/domain/identity.ts` are actually applied.
 
 **Overselling.** Seat reservation is a single conditional `UPDATE` — it increments
 `seats_booked` and flips `status` to `sold_out` in one statement, with
@@ -450,17 +498,18 @@ requires, and defaults to `max: 5` per instance.
 
 ### What is still missing
 
-1. **Row-level security.** See tenant isolation above.
-2. **Auth integration.** RLS policies key off the authenticated JWT, so they only
-   become meaningful once `AuthProvider.getViewer()` resolves a real session —
-   which needs the unbuilt login flow described in §1.
-3. **Verification against a live Supabase project.** The adapter is exercised
+1. **Per-row authorization policies.** The public API is closed, but the database
+   does not enforce "may this viewer read this booking" — application code does.
+2. **Verification against a live Supabase project.** The adapter is exercised
    against PGlite, which is genuine Postgres, but nothing here has run against
    hosted Supabase: pooler behavior, TLS, latency and connection limits are
    untested.
-4. **Backups, retention and PII handling.** The schema stores email, phone and
+3. **Backups, retention and PII handling.** The schema stores email, phone and
    payout references. Nothing yet defines how long they are kept or who can read
    them.
+4. **Role administration.** `moderator` and `admin` are granted by updating
+   `users.roles` directly. There is no UI, no audit trail, and no server-side
+   role check on `/ops/*` — the capability guard there is a routing guard only.
 
 ---
 

@@ -22,29 +22,6 @@ const PROVIDERS_KEY = Symbol.for("whitelabel.providers");
 
 type GlobalWithProviders = typeof globalThis & { [PROVIDERS_KEY]?: Providers };
 
-/**
- * Reads the caller's Supabase access token from the `Authorization` header.
- *
- * Deliberately header-based, not cookie-based. Supabase's browser session cookie
- * is chunked and its encoding is an implementation detail of `@supabase/ssr`;
- * hand-parsing it would be guesswork. A Bearer header is a fully specified
- * contract that works today for API routes and server-to-server calls.
- *
- * Browser cookie sessions need the sign-in flow, which is not built — see
- * `src/providers/supabase/index.ts`. Returning undefined here means "signed
- * out", which is the correct and safe answer, not a silent failure.
- */
-async function bearerTokenFromRequest(): Promise<string | undefined> {
-  // Imported lazily: `next/headers` throws outside a request scope, and this
-  // module is also loaded by scripts and tests.
-  const { headers } = await import("next/headers");
-  const authorization = headers().get("authorization");
-  if (!authorization) return undefined;
-
-  const [scheme, token] = authorization.split(" ");
-  return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
-}
-
 function createLiveAuthProvider(provider: string): AuthProvider {
   if (provider !== "supabase") {
     throw new Error(
@@ -53,12 +30,30 @@ function createLiveAuthProvider(provider: string): AuthProvider {
     );
   }
 
-  // Required lazily so `@supabase/supabase-js` is only pulled into the bundle
-  // of a client that actually selects it.
+  // Required lazily so the Supabase SDKs are only pulled into the bundle of a
+  // client that actually selects them.
   const { createSupabaseAuthProvider } =
     require("./supabase") as typeof import("./supabase");
 
-  return createSupabaseAuthProvider(bearerTokenFromRequest);
+  return createSupabaseAuthProvider();
+}
+
+/**
+ * Which auth provider is active.
+ *
+ * The client config is the default, and `AUTH_PROVIDER` overrides it. That
+ * override exists because "which auth provider" is genuinely a property of the
+ * *deployment*, not of the brand: the same client config has to work as a
+ * credential-free demo (where there is no Supabase project) and as a live
+ * deployment (where there is). Baking `supabase` into the config would break
+ * `npm run dev` for anyone without credentials, which is a rule this repo keeps.
+ *
+ * Unset means the config wins, so the zero-configuration path is unchanged.
+ */
+export function activeAuthProvider(): string {
+  return (
+    process.env.AUTH_PROVIDER ?? client.config.integrations.auth?.provider ?? "demo"
+  );
 }
 
 export function getProviders(): Providers {
@@ -67,7 +62,7 @@ export function getProviders(): Providers {
   if (cached) return cached;
 
   const integrations = client.config.integrations;
-  const authProvider = integrations.auth?.provider;
+  const authProvider = activeAuthProvider();
 
   // Auth is the one seam with a live adapter today. Everything else still fails
   // loudly rather than silently falling back to mocks in production.
@@ -89,7 +84,7 @@ export function getProviders(): Providers {
 
   const providers = createDemoProviders();
 
-  if (authProvider && authProvider !== "demo") {
+  if (authProvider !== "demo") {
     providers.auth = createLiveAuthProvider(authProvider);
   }
 
@@ -99,10 +94,30 @@ export function getProviders(): Providers {
 
 /** True when every active provider is a credential-free mock. */
 export function isDemoMode(): boolean {
+  return mockedProviders().length === 5;
+}
+
+/**
+ * Human-readable names of the providers that are still mocks.
+ *
+ * Drives the disclosure banner. Derived from `info.mode` rather than from
+ * config, so an adapter cannot be swapped in without the banner noticing — and
+ * it reports a partially-live deployment accurately instead of going quiet the
+ * moment one real provider appears.
+ */
+export function mockedProviders(): string[] {
   const p = getProviders();
-  return [p.auth, p.commerce, p.session, p.media, p.messaging].every(
-    (x) => x.info.mode === "demo"
-  );
+  return (
+    [
+      [p.auth, "sign-in"],
+      [p.commerce, "payments"],
+      [p.session, "live video"],
+      [p.media, "media hosting"],
+      [p.messaging, "message delivery"],
+    ] as const
+  )
+    .filter(([provider]) => provider.info.mode === "demo")
+    .map(([, label]) => label);
 }
 
 export * from "./types";

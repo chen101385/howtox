@@ -34,6 +34,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
       style: "stage_name",
       handle: "the-lamplighter",
     },
+    roles: ["host", "guest"],
     createdAt: "2024-03-04T00:00:00.000Z",
   },
   {
@@ -44,6 +45,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
     email: "marisol.private@example.invalid",
     verification: { identity: "verified", provider: "demo-illustrative" },
     display: { displayName: "Marisol", style: "first_name", handle: "marisol" },
+    roles: ["host", "guest"],
     createdAt: "2024-05-19T00:00:00.000Z",
   },
   {
@@ -58,6 +60,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
       style: "first_name_last_initial",
       handle: "dev-k",
     },
+    roles: ["host", "guest"],
     createdAt: "2023-11-02T00:00:00.000Z",
   },
   {
@@ -72,6 +75,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
       style: "stage_name",
       handle: "cordelia-the-unlikely",
     },
+    roles: ["host", "guest"],
     createdAt: "2024-08-11T00:00:00.000Z",
   },
   {
@@ -82,6 +86,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
     email: "ripley.private@example.invalid",
     verification: { identity: "verified", provider: "demo-illustrative" },
     display: { displayName: "Ripley", style: "nickname", handle: "ripley" },
+    roles: ["host", "guest"],
     createdAt: "2024-01-22T00:00:00.000Z",
   },
   {
@@ -96,6 +101,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
       style: "stage_name",
       handle: "dj-halcyon",
     },
+    roles: ["host", "guest"],
     createdAt: "2025-02-14T00:00:00.000Z",
   },
   {
@@ -106,6 +112,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
     email: "pep.private@example.invalid",
     verification: { identity: "verified", provider: "demo-illustrative" },
     display: { displayName: "Nonna Pep", style: "nickname", handle: "nonna-pep" },
+    roles: ["host", "guest"],
     createdAt: "2023-09-30T00:00:00.000Z",
   },
   {
@@ -116,6 +123,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
     email: "bex.private@example.invalid",
     verification: { identity: "verified", provider: "demo-illustrative" },
     display: { displayName: "Bex", style: "first_name", handle: "bex" },
+    roles: ["host", "guest"],
     createdAt: "2024-06-07T00:00:00.000Z",
   },
   {
@@ -130,6 +138,7 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
       style: "stage_name",
       handle: "quizmaster-ono",
     },
+    roles: ["host", "guest"],
     createdAt: "2024-04-18T00:00:00.000Z",
   },
 ];

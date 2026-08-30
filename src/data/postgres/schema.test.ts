@@ -7,6 +7,7 @@ import {
 } from "@/domain/experience";
 import { bookingMachine } from "@/domain/booking";
 import { incidentMachine, REPORT_CATEGORY_LABELS } from "@/domain/incident";
+import { ROLES } from "@/domain/identity";
 import { LEDGER_ENTRY_STATUSES, LEDGER_ENTRY_TYPES } from "@/domain/ledger";
 
 /**
@@ -51,6 +52,10 @@ describe("Postgres enums match the domain unions", () => {
     expect(sorted(t.reportCategoryEnum.enumValues)).toEqual(
       sorted(Object.keys(REPORT_CATEGORY_LABELS))
     );
+  });
+
+  it("role", () => {
+    expect(sorted(t.roleEnum.enumValues)).toEqual(sorted(ROLES));
   });
 
   it("ledger_entry_type", () => {

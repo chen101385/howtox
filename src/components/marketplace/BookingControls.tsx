@@ -254,7 +254,17 @@ export function BookingPanel(props: BookingPanelProps) {
           seatCount: quantity,
         }),
       });
-      const data: { bookingCode?: string; error?: string } = await response.json();
+      const data: { bookingCode?: string; error?: string; signInPath?: string } =
+        await response.json();
+
+      // Send an unauthenticated guest to sign in and back again, rather than
+      // showing "sign in to book" next to a button that cannot help them.
+      if (response.status === 401 && data.signInPath) {
+        const next = encodeURIComponent(window.location.pathname);
+        router.push(`${data.signInPath}?next=${next}`);
+        return;
+      }
+
       if (!response.ok || !data.bookingCode) {
         throw new Error(data.error ?? "Could not create the booking.");
       }

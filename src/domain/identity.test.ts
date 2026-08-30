@@ -28,6 +28,7 @@ const fullUser: UserPrivate = {
   governmentIdRef: "gov_456",
   verification: { identity: "verified" },
   display: { displayName: "Ripley", style: "nickname", handle: "ripley" },
+  roles: ["guest", "host", "admin"],
   createdAt: "2024-01-22T00:00:00.000Z",
 };
 
@@ -53,6 +54,14 @@ describe("toPublicProfile", () => {
     expect(serialized).not.toContain("pm_123");
     expect(serialized).not.toContain("gov_456");
     expect(serialized).not.toContain("Somewhere Lane");
+  });
+
+  it("does not publish authorization grants", () => {
+    // Roles are not secret, but broadcasting who the moderators are hands an
+    // attacker a target list, and it is not information any guest needs.
+    const profile = toPublicProfile(fullUser);
+    expect(profile).not.toHaveProperty("roles");
+    expect(JSON.stringify(profile)).not.toContain("admin");
   });
 
   it("reduces verification to a boolean rather than the underlying record", () => {

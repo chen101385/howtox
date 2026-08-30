@@ -52,6 +52,27 @@ export type VerificationState = {
   provider?: string;
 };
 
+/* --------------------------------- Roles -------------------------------- */
+
+/**
+ * What a user is permitted to do. Stored on the user record — the system of
+ * record — and never read from an identity provider's token metadata, which is
+ * client-writable in some configurations and would let a guest promote itself.
+ *
+ * `guest` is the floor: every account has it. `moderator` and `admin` gate the
+ * `/ops/*` surfaces and must be granted deliberately, out of band; nothing in
+ * the sign-up path can produce them.
+ *
+ * A runtime array so the Postgres enum can be diff-tested against it.
+ */
+export const ROLES = ["guest", "host", "moderator", "admin"] as const;
+
+export type Role = (typeof ROLES)[number];
+
+export function isRole(value: string): value is Role {
+  return (ROLES as readonly string[]).includes(value);
+}
+
 /* ------------------------------ Private user ---------------------------- */
 
 /**
@@ -77,6 +98,8 @@ export type UserPrivate = {
   governmentIdRef?: string;
   verification: VerificationState;
   display: DisplayIdentity;
+  /** Authorization grants. Not restricted, but not published either. */
+  roles: Role[];
   createdAt: string;
 };
 

@@ -60,9 +60,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Host unavailable." }, { status: 409 });
   }
 
-  const viewer = await getProviders().auth.getViewer();
+  const auth = getProviders().auth;
+  const viewer = await auth.getViewer();
   if (!viewer) {
-    return NextResponse.json({ error: "Sign in to book." }, { status: 401 });
+    // The path is included so the client can route them to sign in and back;
+    // it is null on adapters with no sign-in surface, and the client falls back
+    // to showing the message.
+    return NextResponse.json(
+      { error: "Sign in to book.", signInPath: auth.signInPath?.() ?? undefined },
+      { status: 401 }
+    );
   }
 
   try {

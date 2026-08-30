@@ -112,11 +112,12 @@ Operations at `/ops/incidents`.
 |---|---|
 | Config validation, module resolution | Payments (no charge, no payout) |
 | Domain model + state machines | Live audio/video (session shell only) |
-| Compensation ledger arithmetic | Sign-in flow (seeded personas by default) |
-| Anti-circumvention detection | Identity verification (modeled only) |
-| Watermarking, policy acceptance | Moderation operations |
-| Incident/dispute modelling | Row-level security on the database |
-| Postgres persistence (opt-in, see below) | |
+| Compensation ledger arithmetic | Identity verification (modeled only) |
+| Anti-circumvention detection | Moderation operations |
+| Watermarking, policy acceptance | Per-row database authorization policies |
+| Incident/dispute modelling | Role administration (edit `users.roles` by hand) |
+| Postgres persistence (opt-in) | |
+| Magic-link sign-in (opt-in) | |
 
 Demo mode is disclosed in the UI. No mock is presented as a real transaction,
 payout, or recording guarantee.
@@ -142,13 +143,33 @@ not application code — prevents overselling. The adapter is tested against
 [PGlite](https://pglite.dev) (real Postgres in WASM) running the real migration
 files, so `npm test` covers it with no Docker and no credentials.
 
-Not yet done: row-level security, and verification against a hosted Supabase
-project. See [docs/provider-integrations.md](docs/provider-integrations.md) §7.
+Not yet done: per-row authorization policies, and verification against a hosted
+Supabase project. See
+[docs/provider-integrations.md](docs/provider-integrations.md) §7.
 
-Auth has a Supabase adapter that verifies Bearer tokens and resolves roles from
-our own `users` table — but **no login flow** (no sign-in UI, callback route, or
-first-login provisioning), so browser visitors are treated as signed out. §1 of
-the same document has the details.
+## Authentication
+
+Off by default — the demo runs on seeded personas. Turn it on with
+`AUTH_PROVIDER=supabase` plus the Supabase keys and `DATABASE_URL`:
+
+- Email magic link at `/sign-in`. No passwords stored, hashed, reset or leaked.
+- Cookie sessions, refreshed in `src/middleware.ts`.
+- An account is provisioned in our `users` table on first sign-in, with the
+  `guest` role. Nothing in that path can grant `host`, `moderator` or `admin`.
+- Roles are read from `users.roles`, **never** from Supabase `user_metadata` —
+  the signed-in user can write that, so a `role` claim there is self-granted.
+  There's a test that puts `{"role":"admin"}` on the token and asserts the
+  viewer is still a guest.
+
+Migration `0002` also revokes the auto-exposed PostgREST API over these tables.
+By default Supabase serves every `public` table to anyone holding the anon key
+that ships to the browser; without that migration the `users` table is readable
+by the internet.
+
+Not verified: the browser round trip against a live project. Email delivery, the
+redirect allow-list and cookie behavior on a real domain are untested until
+someone signs in for real. See
+[docs/provider-integrations.md](docs/provider-integrations.md) §1.
 
 ## Adding a client
 

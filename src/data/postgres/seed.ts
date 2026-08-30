@@ -52,6 +52,7 @@ export async function seedDatabase(
     handle: u.display.handle,
     avatarSrc: u.display.avatar?.src ?? null,
     avatarAlt: u.display.avatar?.alt ?? null,
+    roles: u.roles,
     createdAt: new Date(u.createdAt),
   }));
 

@@ -97,6 +97,8 @@ export const displayNameStyleEnum = pgEnum("display_name_style", [
   "stage_name",
 ]);
 
+export const roleEnum = pgEnum("role", ["guest", "host", "moderator", "admin"]);
+
 export const messageStatusEnum = pgEnum("message_status", [
   "sent",
   "warned",
@@ -187,6 +189,12 @@ export const users = pgTable(
     handle: text("handle").notNull(),
     avatarSrc: text("avatar_src"),
     avatarAlt: text("avatar_alt"),
+    /**
+     * Authorization grants. `moderator` and `admin` must be set deliberately —
+     * no sign-up path can produce them, and they are never read from the
+     * identity provider's token metadata.
+     */
+    roles: roleEnum("roles").array().notNull().default(["guest"]),
     /** Set when an external identity provider (e.g. Supabase Auth) owns the login. */
     externalAuthId: text("external_auth_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -194,7 +202,16 @@ export const users = pgTable(
   (t) => ({
     tenantHandle: uniqueIndex("users_tenant_handle_idx").on(t.tenantId, t.handle),
     tenantEmail: uniqueIndex("users_tenant_email_idx").on(t.tenantId, t.email),
-    externalAuth: index("users_external_auth_idx").on(t.tenantId, t.externalAuthId),
+    /**
+     * Unique, not merely indexed: first-login provisioning relies on the
+     * database rejecting a duplicate, so two concurrent sign-ins for the same
+     * identity cannot create two accounts. Postgres permits many NULLs here,
+     * which is what seeded users without an external identity need.
+     */
+    externalAuth: uniqueIndex("users_external_auth_idx").on(
+      t.tenantId,
+      t.externalAuthId
+    ),
   })
 );
 
