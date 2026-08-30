@@ -95,6 +95,44 @@ an authorization check without providing one.
 - A decision about what a signed-out viewer sees. `getViewer()` returning `null`
   is currently an unexercised path.
 
+### The Supabase adapter — what exists and what does not
+
+`src/providers/supabase/` is the first live adapter in the codebase. Setting
+`integrations.auth.provider = "supabase"` on a client, plus
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DATABASE_URL`,
+makes `getProviders().auth` a `SupabaseAuthProvider` instead of the demo one.
+All three are required and startup fails if any is missing — roles resolve from
+our own `users` table, so Supabase auth on the in-memory adapter would reject
+every sign-in while looking correctly configured.
+
+**Implemented, and worth understanding before you change it:**
+
+- **Tokens are verified server-side on every call.** `getViewer()` calls
+  `client.auth.getUser(token)` rather than decoding the JWT locally. A local
+  decode proves only that *something* signed the token, and this value gates
+  bookings and payouts. If it becomes a hot path, cache per request — do not
+  swap in an unverified decode.
+- **Roles come from our own `users` table**, resolved by `externalAuthId`, never
+  from `user_metadata`. Supabase metadata is client-writable in some
+  configurations, so trusting a `role` claim there would let a guest promote
+  itself to moderator.
+- **The token is read from `Authorization: Bearer`.** Supabase's browser session
+  cookie is chunked and its encoding is an `@supabase/ssr` implementation
+  detail; hand-parsing it would be guesswork, so the adapter uses the one
+  contract that is fully specified.
+
+**Not implemented — this is not a working login:**
+
+- No sign-in UI, no OAuth callback route, no session refresh.
+- No provisioning of an application `users` row on first login. A verified
+  Supabase identity with no matching row logs a warning and resolves to `null`.
+- Consequently a browser visitor is always treated as signed out. Only a caller
+  that already holds an access token (API client, server-to-server) can
+  authenticate today.
+
+The adapter has not been exercised against a live Supabase project — it
+typechecks and its dependencies are wired, and that is the whole of the claim.
+
 ---
 
 ## 2. Commerce
@@ -327,7 +365,7 @@ of the server process.
 
 | Capability | What exists now | What production requires |
 |---|---|---|
-| Sign-in / sessions | `DemoAuthProvider` returns a seeded persona; never `null` | Real IdP, server-verified sessions, CSRF, sign-out |
+| Sign-in / sessions | `DemoAuthProvider` returns a seeded persona; never `null`. Supabase adapter verifies a Bearer token but has no login flow | Sign-in UI, OAuth callback, session refresh, first-login user provisioning, CSRF, sign-out |
 | Authorization | `viewer.userId === booking.guestUserId` checks on 2 API routes; capability guards that 404 | Server-side authorization on every sensitive read and write, real roles for `/ops/*` |
 | Identity verification | `VerificationState` field only; nothing can set it legitimately | KYC/ID vendor, document handling, retention policy |
 | Charging a guest | `demo_charge_*` reference, no money moves | PSP integration, webhooks, idempotency keys, tax |
@@ -338,7 +376,7 @@ of the server process.
 | Block rejoin | In-process `Map` in the demo adapter | Server-side ban list, token re-issue refused |
 | Sample playback | Local `/public` paths | Ingest, transcode, signed URLs, media moderation |
 | Message delivery | `{ ok: true }`, delivered nowhere | Durable store, realtime transport, rate limits, abuse tooling |
-| Persistence | In-memory, process lifetime | Database adapter — see §7 |
+| Persistence | In-memory by default; Postgres/Drizzle adapter when `DATABASE_URL` is set | Row-level tenant isolation, connection sizing, backups — see §7 |
 | Lead capture | `POST /api/lead` validates and acknowledges, delivers nowhere | An email/CRM provider |
 | Analytics | `integrations.analytics` is typed but never read by any code | A script/SDK actually wired into the layout |
 
@@ -354,42 +392,75 @@ recording guarantee.
 `ReputationRepository`, `LedgerRepository` — bundled as `Repositories`. Every
 method takes a `TenantId` as its first meaningful argument.
 
-The only adapter is `src/data/memory/index.ts`, backed by `src/data/seed/*`.
-`src/data/index.ts` caches one instance per server process, which is why a demo
-booking survives navigation but not a restart — the honest behavior for an
-in-memory adapter, and it says so in a comment. Every memory query filters on
-`tenantId`, mirroring the isolation a real backend must enforce at the row level.
+Two adapters implement them:
 
-### What a future Postgres/Supabase adapter must provide
+- **`src/data/memory/`** — backed by `src/data/seed/*`. Selected when
+  `DATABASE_URL` is unset. A booking survives navigation but not a restart, which
+  is the honest behavior for an in-memory store.
+- **`src/data/postgres/`** — Drizzle ORM over postgres-js. Selected when
+  `DATABASE_URL` is set.
 
-None of the following exists yet. That absence is the reason no database
-dependency was added: a half-wired database is worse than a clearly-labeled
-in-memory store, and adding the dependency before these are answered would make
-the demo depend on infrastructure nobody has set up.
+`getDataMode()` reports which is active. Selection is by presence of the variable
+alone, so an accidentally-set `DATABASE_URL` silently switches adapters; that is
+the first thing to check when expected data is missing.
 
-1. **Local setup** — a documented, one-command path to a working local database,
-   plus a seeding routine that loads the same fixtures the in-memory adapter uses
-   so the demo content survives the switch.
-2. **Migrations** — versioned, forward-only, reviewable, and runnable in CI. Every
-   branded id and every `Money` column needs a decided representation (integer
-   minor units plus a currency column, never a float).
-3. **Tenant isolation** — a `tenant_id` column on every table, enforced at the row
-   level (Postgres RLS or an equivalent), not merely by remembering to add a
-   `WHERE` clause. The interfaces already carry `TenantId` through every call so
-   the adapter has the value to enforce with.
-4. **Auth integration** — the database's notion of the current user must line up
-   with `AuthProvider.getViewer()`. With Supabase in particular, RLS policies key
-   off the authenticated JWT, so the auth adapter and the data adapter have to be
-   designed together rather than in sequence.
-5. **Tests** — the repository suite (`src/data/repositories.test.ts`) should run
-   against the real adapter too, not only the in-memory one, or the interface
-   stops meaning anything.
-6. **A no-credential demo mode** — the in-memory adapter must remain selectable so
-   `npm run dev` still works with nothing configured. Adding persistence must not
-   take away the zero-setup path.
+Nothing above `src/data/index.ts` knows which adapter it is talking to.
 
-Until all six are answered, `getRepositories()` returns the in-memory adapter and
-nothing above `src/data/index.ts` changes when that stops being true.
+### How the Postgres adapter answers the hard parts
+
+**Migrations.** `src/data/postgres/schema.ts` is the source; `npm run db:generate`
+emits SQL into `drizzle/`, and `npm run db:migrate` applies it. Migrations need a
+**session-mode** connection (port 5432) — DDL cannot run over the transaction
+pooler — so they read `MIGRATION_DATABASE_URL`, falling back to `DATABASE_URL`.
+
+**Money.** Every money column is `bigint` in integer minor units and named
+`*_minor`, with currency stored alongside. `schema.test.ts` asserts both — a
+`numeric` or `double precision` column would silently undo the invariant that
+`src/domain/money.ts` enforces everywhere else.
+
+**Enum drift.** A `pgEnum` and a TypeScript union are two declarations of one
+set, and updating one is easy to forget. `schema.test.ts` compares them as sets
+for booking mode, delivery mode, category, booking status, incident status,
+report category, and both ledger enums. Add a domain value, forget the schema,
+and a test fails instead of a production insert.
+
+**Tenant isolation.** `tenant_id` is non-null on all 12 tables, part of every
+index, and in the `WHERE` clause of every query. This is *not yet* row-level
+security: isolation currently depends on the adapter being correct, which is
+weaker than the database refusing to return the row. RLS policies are the next
+step, and they need the auth integration below to be real first.
+
+**Overselling.** Seat reservation is a single conditional `UPDATE` — it increments
+`seats_booked` and flips `status` to `sold_out` in one statement, with
+`seats_booked + n <= capacity` in the predicate, and treats zero updated rows as
+failure. The check and the write cannot interleave, so concurrency is handled by
+Postgres rather than by application-level locking. A test fires `capacity + 5`
+simultaneous single-seat reservations and asserts exactly `capacity` succeed.
+
+**Tests.** `src/data/postgres/repositories.test.ts` runs the suite against
+**PGlite** — real Postgres compiled to WASM, running the real migration files
+in-process. No Docker, no credentials, no network, and it runs in CI by default.
+This is what makes the adapter tested rather than merely typechecked: it is how
+the `dispute_hold` earnings bug was found.
+
+**Connection pooling.** Serverless runtimes open many short-lived connections.
+The runtime URL should be Supabase's Supavisor **transaction** pooler (port
+6543); `src/data/postgres/client.ts` sets `prepare: false`, which that mode
+requires, and defaults to `max: 5` per instance.
+
+### What is still missing
+
+1. **Row-level security.** See tenant isolation above.
+2. **Auth integration.** RLS policies key off the authenticated JWT, so they only
+   become meaningful once `AuthProvider.getViewer()` resolves a real session —
+   which needs the unbuilt login flow described in §1.
+3. **Verification against a live Supabase project.** The adapter is exercised
+   against PGlite, which is genuine Postgres, but nothing here has run against
+   hosted Supabase: pooler behavior, TLS, latency and connection limits are
+   untested.
+4. **Backups, retention and PII handling.** The schema stores email, phone and
+   payout references. Nothing yet defines how long they are kept or who can read
+   them.
 
 ---
 

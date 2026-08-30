@@ -55,8 +55,8 @@ src/modules/                  module registry: capabilities, deps, nav, sections
 src/sections/ + components/   presentation (reads terminology, never vendors)
         ↓
 src/domain/                   framework-free types, state machines, money, risk
-src/data/                     repository interfaces + in-memory demo adapters
-src/providers/                Auth/Commerce/Session/Media/Messaging + demo adapters
+src/data/                     repository interfaces + in-memory and Postgres adapters
+src/providers/                Auth/Commerce/Session/Media/Messaging adapters
 ```
 
 - **Theming** — `src/theme/theme.ts` turns a client's colors/fonts/radius into CSS
@@ -112,13 +112,43 @@ Operations at `/ops/incidents`.
 |---|---|
 | Config validation, module resolution | Payments (no charge, no payout) |
 | Domain model + state machines | Live audio/video (session shell only) |
-| Compensation ledger arithmetic | Authentication (seeded personas) |
+| Compensation ledger arithmetic | Sign-in flow (seeded personas by default) |
 | Anti-circumvention detection | Identity verification (modeled only) |
-| Watermarking, policy acceptance | Persistence (in-memory, per process) |
-| Incident/dispute modelling | Moderation operations |
+| Watermarking, policy acceptance | Moderation operations |
+| Incident/dispute modelling | Row-level security on the database |
+| Postgres persistence (opt-in, see below) | |
 
 Demo mode is disclosed in the UI. No mock is presented as a real transaction,
 payout, or recording guarantee.
+
+## Persistence
+
+The app runs with **no environment variables and no database**. Set
+`DATABASE_URL` and it switches to Postgres via Drizzle; leave it unset and it
+uses the in-memory adapter, which resets on restart. Both satisfy the same
+interfaces in `src/data/repositories.ts`, and nothing above `src/data/index.ts`
+knows the difference.
+
+```bash
+npm run db:generate   # schema change -> SQL migration in drizzle/
+npm run db:migrate    # apply migrations (needs a session-mode connection)
+npm run db:seed       # load the demo fixtures into Postgres
+npm run db:studio     # browse the data
+```
+
+Money is stored as `bigint` minor units, `tenant_id` is non-null on all 12
+tables, and seat reservation is a single conditional `UPDATE` so the database —
+not application code — prevents overselling. The adapter is tested against
+[PGlite](https://pglite.dev) (real Postgres in WASM) running the real migration
+files, so `npm test` covers it with no Docker and no credentials.
+
+Not yet done: row-level security, and verification against a hosted Supabase
+project. See [docs/provider-integrations.md](docs/provider-integrations.md) §7.
+
+Auth has a Supabase adapter that verifies Bearer tokens and resolves roles from
+our own `users` table — but **no login flow** (no sign-in UI, callback route, or
+first-login provisioning), so browser visitors are treated as signed out. §1 of
+the same document has the details.
 
 ## Adding a client
 
@@ -144,6 +174,11 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 npm test             # vitest
 npm run verify       # typecheck + lint + test + build
+
+npm run db:generate  # schema -> migration        (Postgres only)
+npm run db:migrate   # apply migrations           (Postgres only)
+npm run db:seed      # load demo fixtures         (Postgres only)
+npm run db:studio    # drizzle-kit studio         (Postgres only)
 ```
 
 ## Safety, privacy and fairness

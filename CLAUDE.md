@@ -19,7 +19,14 @@ npm test                                      # vitest
 npm run verify                                # typecheck + lint + test + build
 npm run new-client -- <slug> "Name" [--preset <preset>]
 node scripts/generate-demo-assets.mjs         # regenerate demo SVG artwork
+
+npm run db:generate                           # drizzle-kit: schema -> SQL migration
+npm run db:migrate                            # apply migrations (MIGRATION_DATABASE_URL)
+npm run db:seed                               # load demo data into Postgres
+npm run db:studio                             # drizzle-kit studio
 ```
+
+The `db:*` scripts need a connection string; everything else runs credential-free.
 
 Before calling work done, run `npm run verify`, and build the marketplace client
 too — a config-validation failure only surfaces for the client being built:
@@ -82,6 +89,15 @@ not components.
 compiles routes into separate bundles — a module-scoped `let` gives each route
 its own store, and state silently stops being shared.
 
+**12. Two data adapters, selected by `DATABASE_URL`.**
+Unset -> in-memory; set -> Postgres/Drizzle. Both must satisfy the same
+interfaces in `src/data/repositories.ts`, so a change to one usually needs the
+other. Every repository method takes `tenantId` and every query must filter on
+it — a missing tenant predicate is a cross-client data leak, not a slow query.
+When you change a domain union that has a `pgEnum`, update
+`src/data/postgres/schema.ts` and run `npm run db:generate`; `schema.test.ts`
+fails if they drift.
+
 ## Product invariants (do not break these)
 
 - **Guaranteed compensation must never depend on a star rating.** Only the
@@ -114,8 +130,9 @@ with a message that names the fix, and cover it in `src/config/config.test.ts`.
 `src/config/active.ts` unless the script's anchors have moved.
 
 **A live provider:** implement the interface under `src/providers/<vendor>/` and
-register it in `src/providers/index.ts`. That file currently *throws* for any
-non-demo provider rather than silently falling back to mocks — keep that behavior.
+register it in `src/providers/index.ts`. Auth resolves `"supabase"` to a live
+adapter; commerce, session, media and messaging still *throw* for any non-demo
+provider rather than silently falling back to mocks — keep that behavior.
 
 ## Testing
 

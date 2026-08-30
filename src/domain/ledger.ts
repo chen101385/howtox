@@ -15,17 +15,26 @@ import { add, money, percentOf, sum, zero, type Money } from "./money";
 import type { BookingId, LedgerEntryId, TenantId, UserId } from "./ids";
 import type { SessionStatus } from "./session";
 
-export type LedgerEntryType =
-  | "guest_charge"
-  | "host_guaranteed_compensation"
-  | "performance_bonus"
-  | "platform_fee"
-  | "processing_allocation"
-  | "tip"
-  | "refund"
-  | "cancellation_compensation"
-  | "dispute_hold"
-  | "adjustment";
+/**
+ * Declared as a runtime array with the type derived from it, so the Postgres
+ * enum in `src/data/postgres/schema.ts` can be diff-tested against this list
+ * (see `schema.test.ts`). A type alone cannot be enumerated at runtime, which is
+ * how a database enum and a TypeScript union quietly drift apart.
+ */
+export const LEDGER_ENTRY_TYPES = [
+  "guest_charge",
+  "host_guaranteed_compensation",
+  "performance_bonus",
+  "platform_fee",
+  "processing_allocation",
+  "tip",
+  "refund",
+  "cancellation_compensation",
+  "dispute_hold",
+  "adjustment",
+] as const;
+
+export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
 
 /**
  * `pending`  — recorded but not yet releasable (e.g. awaiting session completion)
@@ -33,7 +42,14 @@ export type LedgerEntryType =
  * `held`     — frozen by a dispute; requires human resolution
  * `reversed` — undone by a later corrective entry
  */
-export type LedgerEntryStatus = "pending" | "released" | "held" | "reversed";
+export const LEDGER_ENTRY_STATUSES = [
+  "pending",
+  "released",
+  "held",
+  "reversed",
+] as const;
+
+export type LedgerEntryStatus = (typeof LEDGER_ENTRY_STATUSES)[number];
 
 export type LedgerEntry = {
   id: LedgerEntryId;
@@ -325,11 +341,20 @@ export function performanceBonusEntry(args: {
 
 /* ------------------------------ Aggregation ----------------------------- */
 
+/**
+ * Entry types that represent money owed to the host.
+ *
+ * `dispute_hold` belongs here: it is host-payable money frozen pending review,
+ * and omitting it made a held amount silently disappear from host earnings —
+ * the host would see nothing at all rather than "held, under review", which is
+ * exactly the situation they most need visibility into.
+ */
 const HOST_CREDIT_TYPES: readonly LedgerEntryType[] = [
   "host_guaranteed_compensation",
   "performance_bonus",
   "tip",
   "cancellation_compensation",
+  "dispute_hold",
   "adjustment",
 ];
 
