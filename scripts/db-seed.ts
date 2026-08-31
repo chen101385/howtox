@@ -8,6 +8,10 @@
  */
 import { createDatabase } from "../src/data/postgres/client";
 import { seedDatabase } from "../src/data/postgres/seed";
+import { loadEnv } from "./load-env";
+
+// tsx does not read .env.local the way Next.js does.
+loadEnv();
 
 const url = process.env.DATABASE_URL;
 
@@ -27,17 +31,23 @@ if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PRODUCTION_SEED)
   process.exit(1);
 }
 
-const db = createDatabase(url);
+// Wrapped rather than top-level await: this package is CommonJS, where tsx
+// treats top-level await as a transform error and the script never runs.
+async function main(connectionString: string) {
+  const db = createDatabase(connectionString);
 
-try {
-  const counts = await seedDatabase(db);
-  console.log("✅ Seeded:");
-  for (const [table, count] of Object.entries(counts)) {
-    console.log(`   ${table.padEnd(16)} ${count}`);
+  try {
+    const counts = await seedDatabase(db);
+    console.log("✅ Seeded:");
+    for (const [table, count] of Object.entries(counts)) {
+      console.log(`   ${table.padEnd(16)} ${count}`);
+    }
+  } catch (error) {
+    console.error("✖ Seeding failed:", error);
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error("✖ Seeding failed:", error);
-  process.exitCode = 1;
+
+  process.exit(process.exitCode ?? 0);
 }
 
-process.exit(process.exitCode ?? 0);
+void main(url);

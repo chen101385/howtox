@@ -1,4 +1,9 @@
 import { defineConfig } from "drizzle-kit";
+import { loadEnv } from "./scripts/load-env";
+
+// drizzle-kit does not read .env.local the way Next.js does, so without this a
+// correctly-filled file still produces a connection to localhost.
+loadEnv();
 
 /**
  * Migrations run against the DIRECT connection (Supabase port 5432), not the

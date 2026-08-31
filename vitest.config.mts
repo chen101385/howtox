@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs", "tests/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      // Both extensions: the scaffolding script is .mjs, the env loader is .ts.
+      "scripts/**/*.test.mjs",
+      "scripts/**/*.test.ts",
+      "tests/**/*.test.ts",
+    ],
   },
   resolve: {
     alias: {

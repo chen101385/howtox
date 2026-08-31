@@ -170,11 +170,21 @@ interfaces in `src/data/repositories.ts`, and nothing above `src/data/index.ts`
 knows the difference.
 
 ```bash
+npm run db:doctor     # preflight: checks every link in the chain
 npm run db:generate   # schema change -> SQL migration in drizzle/
 npm run db:migrate    # apply migrations (needs a session-mode connection)
 npm run db:seed       # load the demo fixtures into Postgres
 npm run db:studio     # browse the data
 ```
+
+**Start with `db:doctor`.** "Sign-in doesn't work" has about eight causes — wrong
+pooler port, unapplied migrations, a missing redirect allow-list entry, a
+throttled built-in email sender — and they look nearly identical in a browser.
+The doctor checks each in order, names the one that's broken, and gives the fix.
+It is read-only and redacts your password so its output is safe to paste.
+
+The `db:*` scripts read `.env.local` themselves (Next.js does that for the app,
+but `tsx` does not).
 
 Money is stored as `bigint` minor units, `tenant_id` is non-null on all 12
 tables, and seat reservation is a single conditional `UPDATE` so the database —

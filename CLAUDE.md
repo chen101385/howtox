@@ -21,13 +21,20 @@ npm run verify                                # typecheck + lint + test + build
 npm run new-client -- <slug> "Name" [--preset <preset>]
 node scripts/generate-demo-assets.mjs         # regenerate demo SVG artwork
 
+npm run db:doctor                             # preflight a live Supabase setup
 npm run db:generate                           # drizzle-kit: schema -> SQL migration
 npm run db:migrate                            # apply migrations (MIGRATION_DATABASE_URL)
 npm run db:seed                               # load demo data into Postgres
 npm run db:studio                             # drizzle-kit studio
 ```
 
-The `db:*` scripts need a connection string; everything else runs credential-free.
+The `db:*` scripts need a connection string; everything else runs
+credential-free. They load `.env.local` via `scripts/load-env.ts` — `tsx` does
+not do it the way Next.js does.
+
+Scripts must NOT use top-level await. This package is CommonJS, where `tsx`
+treats it as a transform error and the script never runs at all. Wrap the body in
+`async function main()` and `void main()`.
 
 Before calling work done, run `npm run verify`, and build the marketplace client
 too — a config-validation failure only surfaces for the client being built:

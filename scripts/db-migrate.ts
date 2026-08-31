@@ -10,6 +10,10 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
+import { loadEnv } from "./load-env";
+
+// tsx does not read .env.local the way Next.js does.
+loadEnv();
 
 const url = process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL;
 
@@ -29,16 +33,23 @@ if (url.includes(":6543")) {
   );
 }
 
-// `max: 1` because migrations must run serially on a single session-mode
-// connection; a pool would interleave DDL statements.
-const client = postgres(url, { max: 1 });
+// Wrapped in a function rather than using top-level await: this package is
+// CommonJS, and tsx compiles top-level await to a hard error there. It fails at
+// transform time, so the script never runs at all.
+async function main(connectionString: string) {
+  // `max: 1` because migrations must run serially on a single session-mode
+  // connection; a pool would interleave DDL statements.
+  const client = postgres(connectionString, { max: 1 });
 
-try {
-  await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
-  console.log("✅ Migrations applied.");
-} catch (error) {
-  console.error("✖ Migration failed:", error);
-  process.exitCode = 1;
-} finally {
-  await client.end();
+  try {
+    await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
+    console.log("✅ Migrations applied.");
+  } catch (error) {
+    console.error("✖ Migration failed:", error);
+    process.exitCode = 1;
+  } finally {
+    await client.end();
+  }
 }
+
+void main(url);
