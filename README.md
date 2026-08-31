@@ -7,6 +7,10 @@ marketplace from the same source — the difference is a client config file.
 **Stack:** Next.js 14 (App Router) · TypeScript (strict) · Tailwind · Zod · Vitest
 **Model:** one deployment per client, selected by `NEXT_PUBLIC_CLIENT`.
 
+**Picking this up mid-stream?** [HANDOFF.md](HANDOFF.md) has the current state,
+the task in flight, and the deliberate gaps. [CLAUDE.md](CLAUDE.md) has the
+coding conventions.
+
 ## Quick start
 
 ```bash
