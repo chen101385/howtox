@@ -258,3 +258,89 @@ describe("resolved marketplace client", () => {
 function teenEdgeAsClientConfig(): ClientConfig {
   return normalizeLegacyConfig(teenEdge);
 }
+
+describe("legal document rules", () => {
+  const withLegal = (documents: ClientConfig["legal"]) =>
+    marketplaceConfig({ legal: documents });
+
+  it("accepts the demo client's documents", () => {
+    expect(() => validateClientConfig(marketplaceConfig())).not.toThrow();
+  });
+
+  it("requires terms and privacy once a client can take money", () => {
+    // A brochure site genuinely does not need terms. A checkout does.
+    const config = withLegal({
+      documents: experienceDemo.legal!.documents.filter(
+        (d) => d.id !== "terms" && d.id !== "privacy"
+      ),
+    });
+
+    expect(() => validateClientConfig(config)).toThrow(ClientConfigError);
+    try {
+      validateClientConfig(config);
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('"terms"');
+      expect(message).toContain('"privacy"');
+    }
+  });
+
+  it("requires cancellation and conduct for a marketplace", () => {
+    const config = withLegal({
+      documents: experienceDemo.legal!.documents.filter(
+        (d) => d.id !== "cancellation" && d.id !== "conduct"
+      ),
+    });
+
+    expect(() => validateClientConfig(config)).toThrow(/cancellation/);
+  });
+
+  it("rejects a document with no sections", () => {
+    // An empty policy page is worse than an absent one: it reads as published.
+    const config = withLegal({
+      documents: experienceDemo.legal!.documents.map((d) =>
+        d.id === "conduct" ? { ...d, sections: [] } : d
+      ),
+    });
+
+    expect(() => validateClientConfig(config)).toThrow(/no sections/);
+  });
+
+  it("rejects an unparseable updatedAt", () => {
+    // The date is shown to readers as the answer to "when did this change".
+    const config = withLegal({
+      documents: experienceDemo.legal!.documents.map((d) =>
+        d.id === "terms" ? { ...d, updatedAt: "last tuesday" } : d
+      ),
+    });
+
+    expect(() => validateClientConfig(config)).toThrow(/not a parseable date/);
+  });
+
+  it("marks the demo documents as unreviewed template text", () => {
+    // If this ever fails because someone cleared the flag, the accompanying
+    // change had better include actual legal review.
+    for (const document of experienceDemo.legal!.documents) {
+      expect(document.templateOnly, document.id).toBe(true);
+    }
+  });
+
+  it("states the compensation guarantee accurately in the terms", () => {
+    // The terms must not contradict the code. Guaranteed compensation does not
+    // depend on a rating, and the document that people rely on should say so.
+    const terms = experienceDemo.legal!.documents.find((d) => d.id === "terms")!;
+    const text = terms.sections.flatMap((s) => s.body).join(" ").toLowerCase();
+
+    expect(text).toContain("does not depend on the rating");
+    expect(text).toContain("can never reduce the guarantee");
+  });
+
+  it("does not claim recording is prevented or detected", () => {
+    // The product invariant, asserted against the customer-facing document.
+    const terms = experienceDemo.legal!.documents.find((d) => d.id === "terms")!;
+    const text = terms.sections.flatMap((s) => s.body).join(" ").toLowerCase();
+
+    expect(text).toContain("we do not claim to prevent recording");
+    expect(text).not.toMatch(/recording is (impossible|blocked|prevented)/);
+  });
+});

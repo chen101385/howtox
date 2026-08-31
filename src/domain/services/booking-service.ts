@@ -15,7 +15,9 @@ import {
   type TenantId,
   type UserId,
 } from "@/domain/ids";
-import { money, multiply, type Money } from "@/domain/money";
+import { formatMoney, money, multiply, type Money } from "@/domain/money";
+import { occurrenceDateTimeWithZone } from "@/lib/format";
+import { notify } from "./notification-service";
 import {
   resolveSeatPrice,
   seatsRemaining,
@@ -26,6 +28,7 @@ import {
 import type { Booking, Seat } from "@/domain/booking";
 import {
   DEFAULT_COMPENSATION_POLICY,
+  computeBreakdown,
   entriesForPurchase,
   type CompensationPolicy,
 } from "@/domain/ledger";
@@ -48,6 +51,8 @@ export type CreateBookingInput = {
   guestUserId: UserId;
   guestDisplayName: string;
   hostUserId: UserId;
+  /** Pseudonymous host name for the guest's confirmation. */
+  hostDisplayName?: string;
   policy?: CompensationPolicy;
   currency?: string;
 };
@@ -85,6 +90,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     guestUserId,
     guestDisplayName,
     hostUserId,
+    hostDisplayName,
   } = input;
   const currency = input.currency ?? "USD";
   const policy = input.policy ?? DEFAULT_COMPENSATION_POLICY;
@@ -180,6 +186,48 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     await repos.experiences.reserveSeats(tenantId, occurrence.id, seatCount);
   }
 
+  // After the booking is durable, and deliberately not awaited into the return
+  // path's success condition — see notification-service.ts. Both sides are told:
+  // a host who finds out about a booking only by checking a dashboard is a host
+  // who misses sessions.
+  const breakdown = computeBreakdown(totalPrice, policy);
+  const startsAtLabel = occurrence
+    ? occurrenceDateTimeWithZone(occurrence.startsAt, occurrence.timezone)
+    : undefined;
+
+  await Promise.all([
+    notify({
+      tenantId,
+      userId: guestUserId,
+      reference: bookingCode,
+      payload: {
+        kind: "booking_confirmed",
+        listingTitle: experience.title,
+        providerName: hostDisplayName ?? "your host",
+        bookingCode,
+        seatCount,
+        startsAtLabel,
+        totalLabel: formatMoney(totalPrice),
+      },
+    }),
+    notify({
+      tenantId,
+      userId: hostUserId,
+      reference: bookingCode,
+      payload: {
+        kind: "host_booking_received",
+        listingTitle: experience.title,
+        // The guest's pseudonymous display name — the same string the session
+        // watermark uses. Never their legal name or email.
+        customerName: guestDisplayName,
+        bookingCode,
+        seatCount,
+        startsAtLabel,
+        guaranteedLabel: formatMoney(breakdown.guaranteedHostCompensation),
+      },
+    }),
+  ]);
+
   return confirmed;
 }
 
@@ -207,6 +255,27 @@ export async function completeBooking(bookingCode: string, tenantId: TenantId) {
     "pending",
     "released"
   );
+
+  // Only on the transition, not on every call. `completeBooking` is idempotent,
+  // and asking someone twice how the session went is worse than not asking.
+  if (booking.status === "confirmed") {
+    const experience = await repos.experiences.getById(tenantId, booking.experienceId);
+    const host = experience
+      ? await repos.experiences.getHost(tenantId, experience.hostId)
+      : null;
+
+    await notify({
+      tenantId,
+      userId: booking.guestUserId,
+      reference: booking.bookingCode,
+      payload: {
+        kind: "review_request",
+        listingTitle: experience?.title ?? "your session",
+        providerName: host?.public.displayName ?? "your host",
+        bookingCode: booking.bookingCode,
+      },
+    });
+  }
 
   return { booking: updated, released };
 }

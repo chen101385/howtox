@@ -12,6 +12,7 @@
 
 import type { Money } from "@/domain/money";
 import type { Role } from "@/domain/identity";
+import type { NotificationKind } from "@/domain/notifications";
 import type { ParticipantRole, ParticipantPermissions } from "@/domain/session";
 import type { BookingId, RoomId, TenantId, UserId } from "@/domain/ids";
 
@@ -163,6 +164,57 @@ export interface MessagingProvider {
   }): Promise<{ ok: boolean; mode: ProviderMode }>;
 }
 
+/* --------------------------- Notifications ------------------------------ */
+
+/**
+ * Transactional email (and later SMS or push).
+ *
+ * Distinct from `MessagingProvider`, which carries user-to-user conversation
+ * inside the product. This one reaches a person who is not currently looking at
+ * the site — booking confirmations, review requests.
+ *
+ * PRIVACY: `to.email` is one of the fields `PRIVATE_ONLY_FIELDS` forbids from
+ * public views, and this interface is the ONE sanctioned place it leaves the
+ * server. Two consequences:
+ *
+ *   - A recipient address is read through `UserRepository.getContact()`, whose
+ *     narrow shape exists so it cannot become a general-purpose PII faucet.
+ *   - Never log the address. The demo adapter logs the recipient's *display*
+ *     name for exactly this reason.
+ *
+ * Content is rendered in `src/domain/notifications.ts` before it gets here, so a
+ * vendor adapter never decides wording.
+ */
+export type NotificationRecipient = {
+  /** RESTRICTED. Do not log, and do not put in a response body. */
+  email: string;
+  /** Pseudonymous — safe to log and to put in the message body. */
+  displayName: string;
+};
+
+export type NotificationRequest = {
+  tenantId: TenantId;
+  kind: NotificationKind;
+  to: NotificationRecipient;
+  subject: string;
+  text: string;
+  /** Booking code or similar, for correlating with support conversations. */
+  reference?: string;
+};
+
+export type NotificationResult = {
+  ok: boolean;
+  /** Vendor message id, or a `demo_` reference. */
+  reference: string;
+  mode: ProviderMode;
+  message?: string;
+};
+
+export interface NotificationProvider {
+  readonly info: ProviderInfo;
+  send(request: NotificationRequest): Promise<NotificationResult>;
+}
+
 /* ------------------------------ Container ------------------------------- */
 
 export type Providers = {
@@ -171,4 +223,5 @@ export type Providers = {
   session: SessionProvider;
   media: MediaProvider;
   messaging: MessagingProvider;
+  notifications: NotificationProvider;
 };

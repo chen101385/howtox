@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a red main can be re-checked without an empty commit.
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `ci` not `install`: fails on a lockfile that disagrees with package.json
+      # rather than quietly resolving something else than local development ran.
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      # Includes the PGlite suites, which run real Postgres in WASM against the
+      # real migration files — no service container or credentials needed.
+      - run: npm test
+
+  build:
+    name: Build (${{ matrix.client }})
+    runs-on: ubuntu-latest
+    # Every client is built because config validation is per-client: a broken
+    # `collective` config passes every check above and only fails when that
+    # specific client is built. This matrix is the only thing that catches it.
+    strategy:
+      fail-fast: false
+      matrix:
+        client:
+          - teen-edge
+          - mentor-academy
+          - collective
+          - template
+          - experience-demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_CLIENT: ${{ matrix.client }}
+          # Deliberately absent: DATABASE_URL and the Supabase keys. The build
+          # must succeed with no credentials, which is what keeps the
+          # zero-configuration demo path honest.

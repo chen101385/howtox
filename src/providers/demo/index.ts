@@ -20,6 +20,9 @@ import type {
   CreateRoomArgs,
   MediaProvider,
   MessagingProvider,
+  NotificationProvider,
+  NotificationRequest,
+  NotificationResult,
   ParticipantAccess,
   Providers,
   ProviderInfo,
@@ -194,6 +197,45 @@ export class DemoMessagingProvider implements MessagingProvider {
   }
 }
 
+/* --------------------------- Notifications ------------------------------ */
+
+export class DemoNotificationProvider implements NotificationProvider {
+  readonly info = demoInfo(
+    "Demo Notifications",
+    "Rendered and logged to the server console. No email is sent."
+  );
+
+  /** Kept in memory so tests can assert what would have been sent. */
+  private readonly outbox: NotificationRequest[] = [];
+
+  async send(request: NotificationRequest): Promise<NotificationResult> {
+    this.outbox.push(request);
+
+    // Logs the DISPLAY name, never the address — an email address is one of the
+    // restricted fields, and server logs are the classic place they leak.
+    console.info(
+      `[notifications] ${request.kind} → ${request.to.displayName} ` +
+        `(not delivered): ${request.subject}`
+    );
+
+    return {
+      ok: true,
+      reference: demoRef("notification"),
+      mode: "demo",
+      message: "Rendered but not delivered — no notification provider configured.",
+    };
+  }
+
+  /** Demo-only affordance. Returns copies so callers cannot mutate the record. */
+  sent(): NotificationRequest[] {
+    return this.outbox.map((request) => ({ ...request }));
+  }
+
+  clear(): void {
+    this.outbox.length = 0;
+  }
+}
+
 /* ------------------------------ Container ------------------------------- */
 
 export function createDemoProviders(): Providers {
@@ -203,5 +245,6 @@ export function createDemoProviders(): Providers {
     session: new DemoSessionProvider(),
     media: new DemoMediaProvider(),
     messaging: new DemoMessagingProvider(),
+    notifications: new DemoNotificationProvider(),
   };
 }

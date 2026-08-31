@@ -3,6 +3,11 @@ import { z } from "zod";
 import { client } from "@/config/active";
 import { CURRENT_TENANT, getRepositories } from "@/data";
 import { getProviders } from "@/providers";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Records session-policy acceptance against a booking.
@@ -19,6 +24,11 @@ export async function POST(request: Request) {
   if (!client.has("sessions.lobby")) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
+
+  const limited = await enforceRateLimits([
+    { scope: "session-ip", value: clientAddress(request), rule: RATE_LIMITS.session },
+  ]);
+  if (limited) return limited;
 
   let parsed: z.infer<typeof bodySchema>;
   try {

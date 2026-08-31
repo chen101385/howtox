@@ -56,7 +56,7 @@ src/sections/ + components/   presentation (reads terminology, never vendors)
         ↓
 src/domain/                   framework-free types, state machines, money, risk
 src/data/                     repository interfaces + in-memory and Postgres adapters
-src/providers/                Auth/Commerce/Session/Media/Messaging adapters
+src/providers/                Auth/Commerce/Session/Media/Messaging/Notifications
 ```
 
 - **Theming** — `src/theme/theme.ts` turns a client's colors/fonts/radius into CSS
@@ -116,11 +116,50 @@ Operations at `/ops/incidents`.
 | Anti-circumvention detection | Moderation operations |
 | Watermarking, policy acceptance | Per-row database authorization policies |
 | Incident/dispute modelling | Role administration (edit `users.roles` by hand) |
-| Postgres persistence (opt-in) | |
-| Magic-link sign-in (opt-in) | |
+| Postgres persistence (opt-in) | Email delivery (seam only, no vendor adapter) |
+| Magic-link sign-in (opt-in) | Session reminders (nothing schedules them) |
+| Rate limiting on every public write | |
 
 Demo mode is disclosed in the UI. No mock is presented as a real transaction,
 payout, or recording guarantee.
+
+## Notifications and rate limiting
+
+Transactional email — booking confirmations, host booking alerts, review
+requests — renders in `src/domain/notifications.ts` and dispatches through the
+`NotificationProvider` seam. The demo adapter logs the subject and the
+recipient's *display name* (never their address) and delivers nothing; no vendor
+adapter exists yet. Session reminders are **not** built: nothing in this codebase
+schedules anything, and a reminder template without a scheduler would be
+decoration.
+
+Copy takes the client's terminology, so the same template reads "your session is
+confirmed" for one client and "your class is confirmed" for another. Tests assert
+that, and that no message carries a legal surname, email, phone or payout
+reference — a confirmation email gets forwarded and pasted into support tickets.
+
+Every public POST route goes through `enforceRateLimits()`. Limits are code, in
+one reviewable table in `src/lib/rate-limit-guard.ts`. Sign-in is strictest, in
+two dimensions (per IP and per email address), because it sends mail on your
+domain's reputation. Reporting is the loosest write limit on purpose — a
+distressed person filing a report must never be told to come back later.
+
+The limiter follows `DATABASE_URL` like the repositories: unset means per-process
+counters, set means shared ones. **It must run behind a proxy that overwrites
+`x-forwarded-for`** (Vercel, Cloudflare) or the per-IP dimension is decorative.
+
+## Policies
+
+Terms, privacy, cancellation and conduct live in `legal.documents` in the client
+config and render at `/legal` and `/legal/[id]`, with footer links generated
+automatically. A client with checkout enabled fails validation without terms and
+privacy; a marketplace client also needs cancellation and conduct.
+
+The demo client's documents are marked `templateOnly`, which renders a visible
+"not legal advice" notice. They describe what this platform actually does —
+rating-independent compensation, watermarking without recording detection,
+nothing auto-adjudicated — which is the part a lawyer can't write for you.
+**They have not been reviewed and are not fit to publish as-is.**
 
 ## Persistence
 
@@ -201,6 +240,10 @@ npm run db:migrate   # apply migrations           (Postgres only)
 npm run db:seed      # load demo fixtures         (Postgres only)
 npm run db:studio    # drizzle-kit studio         (Postgres only)
 ```
+
+CI runs typecheck, lint, the full test suite, and a build for **every** client on
+each push and pull request — config validation is per-client, so a broken client
+config passes every other check and only fails when that client is built.
 
 ## Safety, privacy and fairness
 

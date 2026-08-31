@@ -1,6 +1,7 @@
 import type { ClientConfig } from "@/config/client-config";
 import { MARKETPLACE_TERMINOLOGY } from "@/config/terminology";
 import { DEFAULT_COMPENSATION_POLICY } from "@/domain/ledger";
+import { DEMO_LEGAL_DOCUMENTS } from "./legal";
 
 /**
  * DEMO CLIENT — "Lantern Rooms"
@@ -180,6 +181,12 @@ const config: ClientConfig = {
     media: { provider: "demo" },
     messaging: { provider: "demo" },
     formEndpoint: "/api/lead",
+  },
+
+  legal: {
+    entityName: "Lantern Rooms (demo)",
+    contactEmail: "policies@example.invalid",
+    documents: DEMO_LEGAL_DOCUMENTS,
   },
 };
 

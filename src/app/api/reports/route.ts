@@ -10,6 +10,11 @@ import {
   type ReportCategory,
 } from "@/domain/incident";
 import { getProviders } from "@/providers";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * In-session reporting.
@@ -35,6 +40,12 @@ export async function POST(request: Request) {
   if (!client.has("trust.reporting")) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
+
+  // The loosest write limit in the app, on purpose — see RATE_LIMITS.report.
+  const limited = await enforceRateLimits([
+    { scope: "report-ip", value: clientAddress(request), rule: RATE_LIMITS.report },
+  ]);
+  if (limited) return limited;
 
   let parsed: z.infer<typeof bodySchema>;
   try {

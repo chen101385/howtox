@@ -1,4 +1,5 @@
 import { createMemoryRepositories } from "./memory";
+import { createMemoryRateLimiter, type RateLimiter } from "./rate-limit";
 import { DEMO_TENANT } from "./seed/hosts";
 import type { Repositories } from "./repositories";
 
@@ -50,7 +51,39 @@ export function getRepositories(): Repositories {
   return scope[REGISTRY_KEY];
 }
 
+/**
+ * The rate limiter, selected the same way and pinned for the same reason: a
+ * per-bundle limiter would give each route its own counters, which is exactly
+ * the bug the in-memory adapter is already apologetic about.
+ */
+const LIMITER_KEY = Symbol.for("whitelabel.rateLimiter");
+
+type GlobalWithLimiter = typeof globalThis & { [LIMITER_KEY]?: RateLimiter };
+
+function createRateLimiter(): RateLimiter {
+  const url = process.env.DATABASE_URL;
+  if (!url) return createMemoryRateLimiter();
+
+  const { getDatabase } = require("./postgres/client") as typeof import("./postgres/client");
+  const { createPostgresRateLimiter } =
+    require("./postgres/rate-limit") as typeof import("./postgres/rate-limit");
+
+  return createPostgresRateLimiter(getDatabase(url));
+}
+
+export function getRateLimiter(): RateLimiter {
+  const scope = globalThis as GlobalWithLimiter;
+  scope[LIMITER_KEY] ??= createRateLimiter();
+  return scope[LIMITER_KEY];
+}
+
 /** The tenant this deployment serves. Carried through every repository call. */
 export const CURRENT_TENANT = DEMO_TENANT;
 
 export * from "./repositories";
+export {
+  identityKey,
+  type RateLimitResult,
+  type RateLimitRule,
+  type RateLimiter,
+} from "./rate-limit";

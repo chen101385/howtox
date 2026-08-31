@@ -141,6 +141,38 @@ export const SEED_USERS_PRIVATE: UserPrivate[] = [
     roles: ["host", "guest"],
     createdAt: "2024-04-18T00:00:00.000Z",
   },
+  /**
+   * The two non-host demo personas from `seed/viewers.ts`. They exist here so
+   * the notification path is actually exercised in the demo — without a contact
+   * record, a booking confirmation is skipped and the wiring looks fine while
+   * doing nothing.
+   *
+   * `example.invalid` is reserved by RFC 2606 and can never receive mail, which
+   * is the point: a demo must not be one misconfiguration away from emailing a
+   * real address.
+   */
+  {
+    id: userId("usr_guest_ada"),
+    tenantId: DEMO_TENANT,
+    legalFirstName: "Ada",
+    legalLastName: "Fenwick",
+    email: "ada.private@example.invalid",
+    verification: { identity: "unverified" },
+    display: { displayName: "Ada", style: "first_name", handle: "ada" },
+    roles: ["guest"],
+    createdAt: "2025-06-01T00:00:00.000Z",
+  },
+  {
+    id: userId("usr_ops_rowan"),
+    tenantId: DEMO_TENANT,
+    legalFirstName: "Rowan",
+    legalLastName: "Sackville",
+    email: "rowan.private@example.invalid",
+    verification: { identity: "verified", provider: "demo-illustrative" },
+    display: { displayName: "Rowan", style: "first_name", handle: "rowan" },
+    roles: ["moderator", "admin", "guest"],
+    createdAt: "2024-01-05T00:00:00.000Z",
+  },
 ];
 
 const byUserId = (id: string) => {

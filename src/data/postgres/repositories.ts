@@ -44,6 +44,8 @@ import type {
   LedgerRepository,
   Repositories,
   ReputationRepository,
+  UserContact,
+  UserRepository,
 } from "../repositories";
 import type { Experience, ExperienceOccurrence } from "@/domain/experience";
 import type { HostProfile } from "@/domain/identity";
@@ -643,6 +645,29 @@ class PgLedgerRepository implements LedgerRepository {
   }
 }
 
+/* -------------------------------- Users --------------------------------- */
+
+class PgUserRepository implements UserRepository {
+  constructor(private readonly db: PostgresDatabase) {}
+
+  async getContact(
+    tenant: TenantId,
+    user: UserId
+  ): Promise<UserContact | null> {
+    // Two columns, named explicitly. `select()` with no argument would pull the
+    // whole row — legal name, phone, payout reference — into a value that only
+    // needs an address, and the next person to reuse this method would inherit
+    // all of it.
+    const [row] = await this.db
+      .select({ email: t.users.email, displayName: t.users.displayName })
+      .from(t.users)
+      .where(and(eq(t.users.tenantId, tenant), eq(t.users.id, user)))
+      .limit(1);
+
+    return row ?? null;
+  }
+}
+
 /* ------------------------------ Container ------------------------------- */
 
 export function createPostgresRepositories(db: PostgresDatabase): Repositories {
@@ -653,5 +678,6 @@ export function createPostgresRepositories(db: PostgresDatabase): Repositories {
     incidents: new PgIncidentRepository(db),
     reputation: new PgReputationRepository(db),
     ledger: new PgLedgerRepository(db),
+    users: new PgUserRepository(db),
   };
 }

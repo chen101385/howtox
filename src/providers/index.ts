@@ -10,7 +10,7 @@
 
 import { client } from "@/config/active";
 import { createDemoProviders } from "./demo";
-import type { AuthProvider, Providers } from "./types";
+import type { AuthProvider, Providers, ProviderInfo } from "./types";
 
 /**
  * Pinned to `globalThis` for the same reason as the repositories: Next.js
@@ -92,9 +92,29 @@ export function getProviders(): Providers {
   return providers;
 }
 
+/**
+ * Every provider paired with the words a user would recognize it by.
+ *
+ * One list, derived from the container, so adding a seventh provider cannot
+ * leave the disclosure banner silently under-reporting: `isDemoMode()` counts
+ * against this list rather than a hardcoded number.
+ */
+function labelledProviders(): { provider: { info: ProviderInfo }; label: string }[] {
+  const p = getProviders();
+  return [
+    { provider: p.auth, label: "sign-in" },
+    { provider: p.commerce, label: "payments" },
+    { provider: p.session, label: "live video" },
+    { provider: p.media, label: "media hosting" },
+    { provider: p.messaging, label: "message delivery" },
+    { provider: p.notifications, label: "email" },
+  ];
+}
+
 /** True when every active provider is a credential-free mock. */
 export function isDemoMode(): boolean {
-  return mockedProviders().length === 5;
+  const all = labelledProviders();
+  return mockedProviders().length === all.length;
 }
 
 /**
@@ -106,18 +126,9 @@ export function isDemoMode(): boolean {
  * moment one real provider appears.
  */
 export function mockedProviders(): string[] {
-  const p = getProviders();
-  return (
-    [
-      [p.auth, "sign-in"],
-      [p.commerce, "payments"],
-      [p.session, "live video"],
-      [p.media, "media hosting"],
-      [p.messaging, "message delivery"],
-    ] as const
-  )
-    .filter(([provider]) => provider.info.mode === "demo")
-    .map(([, label]) => label);
+  return labelledProviders()
+    .filter(({ provider }) => provider.info.mode === "demo")
+    .map(({ label }) => label);
 }
 
 export * from "./types";

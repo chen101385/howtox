@@ -42,7 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <DemoModeBanner mocked={mocked} />
         <Header brand={site.brand} nav={client.nav} viewerMenu={<ViewerMenu />} />
         <main>{children}</main>
-        <Footer brand={site.brand} contact={site.contact} />
+        <Footer
+          brand={site.brand}
+          contact={site.contact}
+          legal={client.config.legal?.documents}
+        />
       </body>
     </html>
   );

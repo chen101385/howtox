@@ -29,6 +29,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -514,6 +515,35 @@ export const ledgerEntries = pgTable(
   })
 );
 
+/**
+ * Fixed-window rate limit counters.
+ *
+ * Not a business record — operational state that happens to need to be shared
+ * across serverless instances, which is the only reason it is in the database.
+ *
+ * `key` is already hashed by `identityKey()` in src/data/rate-limit.ts, so this
+ * table never holds an email address or an IP in plaintext.
+ */
+export const rateLimitCounters = pgTable(
+  "rate_limit_counters",
+  {
+    tenantId: text("tenant_id").notNull(),
+    key: text("key").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => ({
+    // Composite primary key, not a surrogate id: the upsert that increments a
+    // counter needs a conflict target, and this is the natural one.
+    pk: primaryKey({
+      columns: [t.tenantId, t.key, t.windowStart],
+      name: "rate_limit_counters_pkey",
+    }),
+    // For pruning expired windows.
+    window: index("rate_limit_window_idx").on(t.windowStart),
+  })
+);
+
 export const schema = {
   users,
   hostProfiles,
@@ -527,4 +557,5 @@ export const schema = {
   incidents,
   riskSignals,
   ledgerEntries,
+  rateLimitCounters,
 };

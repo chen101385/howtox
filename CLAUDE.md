@@ -59,8 +59,9 @@ Gate behavior on `client.has("sessions.live")`, never on
 
 **5. Vendor SDKs stay behind provider interfaces.**
 Nothing outside `src/providers/<vendor>/` may import Stripe, LiveKit, Daily,
-Zoom, Supabase, or similar. Domain and UI depend on the interfaces in
-`src/providers/types.ts`.
+Zoom, Supabase, or similar. Domain and UI depend on the six interfaces in
+`src/providers/types.ts`. A vendor adapter never decides user-facing wording —
+notification copy lives in `src/domain/notifications.ts`.
 
 **6. Money is `{ amountMinor, currency }`.**
 Integer minor units everywhere. Never a formatted string, never a float.
@@ -92,7 +93,26 @@ not components.
 compiles routes into separate bundles — a module-scoped `let` gives each route
 its own store, and state silently stops being shared.
 
-**12. New tables need a line in the RLS migration.**
+**12. Every public POST route goes through `enforceRateLimits()`.**
+Limits live in `RATE_LIMITS` (`src/lib/rate-limit-guard.ts`) so they are one
+reviewable table, not scattered constants. A new unauthenticated write route
+without a limit is a hole. Reporting keeps the loosest write limit on purpose:
+a distressed person filing a report must never be told to come back later.
+
+**13. Private contact data leaves the server through one door.**
+`UserRepository.getContact()` returns email + display name and nothing else, and
+`NotificationProvider` is the only sanctioned consumer. Do not add a
+`getPrivate()` that returns a whole `UserPrivate` — the moment one exists, every
+caller has legal name, phone and payout identity within reach. Never log an
+email address; log the display name.
+
+**14. Legal documents are config, not pages.**
+Terms, privacy, cancellation and conduct live in `legal.documents` in the client
+config and render through `/legal/[id]`. Do not hand-write policy pages per
+client. Unreviewed boilerplate must keep `templateOnly: true`, which renders a
+visible notice — clearing that flag is a claim that a lawyer has read it.
+
+**15. New tables need a line in the RLS migration.**
 Supabase serves every `public` schema table through PostgREST using the anon key
 that ships to the browser. `drizzle/0002_lock_down_public_api.sql` revokes those
 grants and enables RLS. A table added later is exposed by default until it gets
@@ -100,7 +120,7 @@ the same treatment — add `ALTER TABLE … ENABLE ROW LEVEL SECURITY` in a new
 migration, and do not add a browser-side Supabase data client expecting to read
 these tables.
 
-**13. Two data adapters, selected by `DATABASE_URL`.**
+**16. Two data adapters, selected by `DATABASE_URL`.**
 Unset -> in-memory; set -> Postgres/Drizzle. Both must satisfy the same
 interfaces in `src/data/repositories.ts`, so a change to one usually needs the
 other. Every repository method takes `tenantId` and every query must filter on
@@ -136,6 +156,14 @@ capabilities, dependencies, nav and admin contributions.
 
 **A new config rule:** add it to `crossFieldProblems()` in `src/config/schema.ts`
 with a message that names the fix, and cover it in `src/config/config.test.ts`.
+
+**A new notification:** add the kind to `NOTIFICATION_KINDS` and a payload
+variant plus template to `src/domain/notifications.ts`, then dispatch it via
+`notify()`. `notifications.test.ts` asserts every declared kind is covered, uses
+no hardcoded marketplace noun, and leaks no private identity.
+
+**A new public write route:** add a rule to `RATE_LIMITS` and call
+`enforceRateLimits()` before doing any work.
 
 **A new client:** use `npm run new-client`. Do not hand-edit
 `src/config/active.ts` unless the script's anchors have moved.

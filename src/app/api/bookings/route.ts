@@ -6,6 +6,11 @@ import { occurrenceId as toOccurrenceId } from "@/domain/ids";
 import { BookingError, createBooking } from "@/domain/services/booking-service";
 import { DEFAULT_COMPENSATION_POLICY } from "@/domain/ledger";
 import { getProviders } from "@/providers";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Booking creation.
@@ -27,6 +32,11 @@ export async function POST(request: Request) {
   if (!client.has("commerce.checkout", "marketplace.listings")) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
+
+  const limited = await enforceRateLimits([
+    { scope: "booking-ip", value: clientAddress(request), rule: RATE_LIMITS.booking },
+  ]);
+  if (limited) return limited;
 
   let parsed: z.infer<typeof bodySchema>;
   try {
@@ -82,6 +92,7 @@ export async function POST(request: Request) {
       guestUserId: viewer.userId,
       guestDisplayName: viewer.displayName,
       hostUserId: host.userId,
+      hostDisplayName: host.public.displayName,
       policy: client.config.policies.compensation ?? DEFAULT_COMPENSATION_POLICY,
       currency: client.config.product.currency,
     });

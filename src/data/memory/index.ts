@@ -18,6 +18,8 @@ import type {
   LedgerRepository,
   Repositories,
   ReputationRepository,
+  UserContact,
+  UserRepository,
 } from "../repositories";
 import type {
   Experience,
@@ -33,7 +35,7 @@ import type { LedgerEntry } from "@/domain/ledger";
 import type { BookingId, ExperienceId, HostId, IncidentId, OccurrenceId, TenantId, UserId, ConversationId } from "@/domain/ids";
 
 import { SEED_EXPERIENCES } from "../seed/experiences";
-import { SEED_HOSTS } from "../seed/hosts";
+import { SEED_HOSTS, SEED_USERS_PRIVATE } from "../seed/hosts";
 import { generateOccurrences } from "../seed/occurrences";
 import { SEED_INCIDENTS, SEED_REVIEWS, SEED_RISK_SIGNALS } from "../seed/reviews";
 import { SEED_LEDGER_ENTRIES } from "../seed/ledger";
@@ -375,6 +377,21 @@ class MemoryLedgerRepository implements LedgerRepository {
   }
 }
 
+/* -------------------------------- Users --------------------------------- */
+
+class MemoryUserRepository implements UserRepository {
+  async getContact(tenantId: TenantId, userId: UserId): Promise<UserContact | null> {
+    const user = SEED_USERS_PRIVATE.find(
+      (u) => u.tenantId === tenantId && u.id === userId
+    );
+    if (!user) return null;
+
+    // Two fields, enumerated. Not a projection of the whole record, so a new
+    // private field on UserPrivate cannot widen what leaves here.
+    return { email: user.email, displayName: user.display.displayName };
+  }
+}
+
 /* ------------------------------ Container ------------------------------- */
 
 export function createMemoryRepositories(): Repositories {
@@ -385,5 +402,6 @@ export function createMemoryRepositories(): Repositories {
     incidents: new MemoryIncidentRepository(),
     reputation: new MemoryReputationRepository(),
     ledger: new MemoryLedgerRepository(),
+    users: new MemoryUserRepository(),
   };
 }

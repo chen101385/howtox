@@ -1,7 +1,20 @@
 import type { Brand, Contact } from "@/config/types";
+import type { LegalDocument } from "@/config/client-config";
 import { Container } from "@/components/Container";
 
-export function Footer({ brand, contact }: { brand: Brand; contact?: Contact }) {
+/**
+ * `legal` is passed in rather than read from config here so this stays a pure
+ * presentational component — the same reason `Header` takes `viewerMenu`.
+ */
+export function Footer({
+  brand,
+  contact,
+  legal = [],
+}: {
+  brand: Brand;
+  contact?: Contact;
+  legal?: LegalDocument[];
+}) {
   return (
     <footer className="border-t border-border bg-surface">
       <Container className="flex flex-col gap-6 py-12 sm:flex-row sm:items-center sm:justify-between">
@@ -31,9 +44,25 @@ export function Footer({ brand, contact }: { brand: Brand; contact?: Contact }) 
         </div>
       </Container>
       <Container className="border-t border-border py-6">
-        <p className="text-xs text-muted">
-          © {brand.name}. Built on the whitelabel site template.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted">
+            © {brand.name}. Built on the whitelabel site template.
+          </p>
+
+          {legal.length > 0 && (
+            <nav aria-label="Policies" className="flex flex-wrap gap-x-4 gap-y-2">
+              {legal.map((document) => (
+                <a
+                  key={document.id}
+                  href={`/legal/${document.id}`}
+                  className="text-xs text-muted underline underline-offset-4 hover:text-fg"
+                >
+                  {document.title}
+                </a>
+              ))}
+            </nav>
+          )}
+        </div>
       </Container>
     </footer>
   );

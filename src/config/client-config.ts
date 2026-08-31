@@ -55,6 +55,59 @@ export type PagesConfig = {
   home: PageComposition;
 };
 
+/* -------------------------------- Legal --------------------------------- */
+
+/**
+ * The four documents every client of this template needs, and which differ per
+ * client. Kept in config rather than hand-written pages so a new client gets the
+ * structure, the routing and the footer links for free — and so it is obvious
+ * when one is missing.
+ *
+ * `terms` and `privacy` are required once a client takes money; `cancellation`
+ * and `conduct` are strongly recommended for a marketplace and enforced for the
+ * interactive-experiences preset (see `crossFieldProblems`).
+ */
+export type LegalDocumentId = "terms" | "privacy" | "cancellation" | "conduct";
+
+/**
+ * Structured rather than a markdown or HTML blob.
+ *
+ * Deliberate: a blob invites pasting a competitor's terms, renders
+ * inconsistently, and would mean adding a markdown pipeline and sanitizer to
+ * accept untrusted input into a page. Headings and paragraphs cover what these
+ * documents actually are.
+ */
+export type LegalSection = {
+  heading: string;
+  /** Paragraphs. Rendered as text — no markup is interpreted. */
+  body: string[];
+};
+
+export type LegalDocument = {
+  id: LegalDocumentId;
+  /** Page title and footer link label. */
+  title: string;
+  /** ISO date. Shown to the reader, because "when did this change" is the question. */
+  updatedAt: string;
+  /** One-line summary shown above the document and on the index. */
+  summary: string;
+  sections: LegalSection[];
+  /**
+   * Set true while the text is template boilerplate that has not been through
+   * legal review. Renders a visible notice. Publishing unreviewed terms as if
+   * they were reviewed is the failure mode this exists to prevent.
+   */
+  templateOnly?: boolean;
+};
+
+export type LegalConfig = {
+  documents: LegalDocument[];
+  /** Entity named as the counterparty, e.g. "Lantern Rooms Ltd". */
+  entityName?: string;
+  /** Where to reach a human about these documents. */
+  contactEmail?: string;
+};
+
 /* ------------------------------ Policies -------------------------------- */
 
 export type IdentityPolicy = {
@@ -162,6 +215,8 @@ export type ClientConfig = {
   modules: ModuleId[];
   policies: PoliciesConfig;
   integrations: IntegrationsConfig;
+  /** Terms, privacy and conduct documents. Required for clients taking money. */
+  legal?: LegalConfig;
 };
 
 export type { Brand, Contact, ImageRef, Link, Navigation, Seo, Sections, ThemeConfig };

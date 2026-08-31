@@ -3,6 +3,11 @@ import { z } from "zod";
 import { client } from "@/config/active";
 import { CURRENT_TENANT } from "@/data";
 import { completeBooking } from "@/domain/services/booking-service";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Marks a session complete and releases the host's guaranteed compensation.
@@ -19,6 +24,11 @@ export async function POST(request: Request) {
   if (!client.has("sessions.live", "commerce.ledger")) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
+
+  const limited = await enforceRateLimits([
+    { scope: "session-ip", value: clientAddress(request), rule: RATE_LIMITS.session },
+  ]);
+  if (limited) return limited;
 
   let parsed: z.infer<typeof bodySchema>;
   try {

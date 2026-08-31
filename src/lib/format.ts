@@ -46,6 +46,32 @@ export function occurrenceDateTime(
   }).format(new Date(iso));
 }
 
+/**
+ * e.g. "Fri 29 Aug, 8:00 PM GMT+1" — for anywhere the reader is not looking at
+ * the site.
+ *
+ * On the page, the browser renders in the viewer's own zone and the omission is
+ * harmless. In an email it is not: the message is read hours later, possibly in
+ * another country, with no way to tell whose 8pm was meant. For a remote
+ * marketplace, showing up an hour late is a ruined session and a dispute, so
+ * anything leaving the site names its zone.
+ */
+export function occurrenceDateTimeWithZone(
+  iso: string,
+  timezone?: string,
+  locale = "en-US"
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
+  }).format(new Date(iso));
+}
+
 /** Relative label used by "live tonight" rails, e.g. "in 3 hours". */
 export function relativeFromNow(iso: string, now: Date = new Date(), locale = "en-US"): string {
   const deltaMs = new Date(iso).getTime() - now.getTime();

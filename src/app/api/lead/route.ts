@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Lead capture endpoint referenced by client configs (`integrations.formEndpoint`).
@@ -17,6 +22,11 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimits([
+    { scope: "lead-ip", value: clientAddress(request), rule: RATE_LIMITS.lead },
+  ]);
+  if (limited) return limited;
+
   let parsed: z.infer<typeof bodySchema>;
   try {
     parsed = bodySchema.parse(await request.json());

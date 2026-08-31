@@ -8,6 +8,11 @@ import { defaultSeverity, type Incident } from "@/domain/incident";
 import { recommendBonus, requiresSafetyReview, type Review } from "@/domain/review";
 import { performanceBonusEntry, tipEntry } from "@/domain/ledger";
 import { getProviders } from "@/providers";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Post-session feedback.
@@ -41,6 +46,11 @@ export async function POST(request: Request) {
   if (!client.has("reputation.reviews")) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
+
+  const limited = await enforceRateLimits([
+    { scope: "review-ip", value: clientAddress(request), rule: RATE_LIMITS.review },
+  ]);
+  if (limited) return limited;
 
   let parsed: z.infer<typeof bodySchema>;
   try {

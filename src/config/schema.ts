@@ -171,6 +171,27 @@ export const clientConfigSchema = z.object({
   modules: z.array(z.enum(ALL_MODULE_IDS as [string, ...string[]])).min(1),
   policies,
   integrations: z.record(z.string(), z.unknown()),
+  legal: z
+    .object({
+      documents: z.array(
+        z.object({
+          id: z.enum(["terms", "privacy", "cancellation", "conduct"]),
+          title: z.string().min(1),
+          updatedAt: z.string().min(1),
+          summary: z.string().min(1),
+          sections: z.array(
+            z.object({
+              heading: z.string().min(1),
+              body: z.array(z.string().min(1)).min(1),
+            })
+          ),
+          templateOnly: z.boolean().optional(),
+        })
+      ),
+      entityName: z.string().optional(),
+      contactEmail: z.string().email().optional(),
+    })
+    .optional(),
 });
 
 /* -------------------------- Cross-field rules --------------------------- */
@@ -293,6 +314,50 @@ function crossFieldProblems(config: ClientConfig): string[] {
     problems.push(
       `policies.moderation.reportingEnabled is true but the "trust-safety" module is not enabled.`
     );
+  }
+
+  /* ------------------------------ Legal ---------------------------------- */
+
+  const legalIds = new Set((config.legal?.documents ?? []).map((d) => d.id));
+
+  // Taking money creates obligations that need somewhere to be written down.
+  // A marketing brochure genuinely does not need terms; a checkout does.
+  if (caps.has("commerce.checkout")) {
+    for (const required of ["terms", "privacy"] as const) {
+      if (!legalIds.has(required)) {
+        problems.push(
+          `A client with checkout enabled must define the "${required}" legal document. ` +
+            `Add it to legal.documents, or remove the "commerce" module.`
+        );
+      }
+    }
+  }
+
+  // A marketplace cancels sessions and moderates people. Both need a published
+  // rule, or the first dispute is decided by whoever complains loudest.
+  if (isMarketplace) {
+    for (const required of ["cancellation", "conduct"] as const) {
+      if (!legalIds.has(required)) {
+        problems.push(
+          `A marketplace client must define the "${required}" legal document. ` +
+            `Add it to legal.documents.`
+        );
+      }
+    }
+  }
+
+  for (const document of config.legal?.documents ?? []) {
+    if (document.sections.length === 0) {
+      problems.push(
+        `legal.documents["${document.id}"] has no sections. An empty document is ` +
+          `worse than an absent one — it looks like a published policy.`
+      );
+    }
+    if (Number.isNaN(Date.parse(document.updatedAt))) {
+      problems.push(
+        `legal.documents["${document.id}"].updatedAt is not a parseable date.`
+      );
+    }
   }
 
   return problems;

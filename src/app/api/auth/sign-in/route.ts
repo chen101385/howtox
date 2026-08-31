@@ -3,6 +3,11 @@ import { z } from "zod";
 import { activeAuthProvider } from "@/providers";
 import { AUTH_CALLBACK_PATH } from "@/providers/supabase";
 import { safeRedirectPath } from "@/lib/redirect";
+import {
+  RATE_LIMITS,
+  clientAddress,
+  enforceRateLimits,
+} from "@/lib/rate-limit-guard";
 
 /**
  * Sign-in initiation — email magic link.
@@ -37,6 +42,23 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
+
+  // The strictest limit in the app, because this route sends mail on our
+  // domain's reputation. Two dimensions on purpose: per IP stops one machine
+  // walking a list of addresses, per address stops one mailbox being flooded
+  // from many machines. Both are recorded even when the first one denies.
+  //
+  // Rate limiting happens after parsing (which sends nothing) and before the
+  // Supabase call (which sends an email).
+  const limited = await enforceRateLimits([
+    {
+      scope: "sign-in-ip",
+      value: clientAddress(request),
+      rule: RATE_LIMITS.signInPerIp,
+    },
+    { scope: "sign-in-email", value: parsed.email, rule: RATE_LIMITS.signInPerEmail },
+  ]);
+  if (limited) return limited;
 
   // Route handlers may write cookies, which this needs: the PKCE code verifier
   // is stored now and read back in the callback.

@@ -135,6 +135,29 @@ export interface LedgerRepository {
   ): Promise<LedgerEntry[]>;
 }
 
+/**
+ * Contact details for reaching a user outside the product.
+ *
+ * DELIBERATELY NARROW. There is no `getPrivate()` here, and there should not be
+ * one: the moment a repository returns a whole `UserPrivate`, every caller has
+ * legal name, phone, address and payout identity within reach, and the privacy
+ * boundary becomes a matter of everyone remembering. This returns the two fields
+ * a notification needs and nothing else.
+ *
+ * If a future feature needs another restricted field, add another
+ * purpose-named method rather than widening this one.
+ */
+export type UserContact = {
+  /** RESTRICTED. For handing to the notification provider only. Never log it. */
+  email: string;
+  /** Pseudonymous. Safe to render and to log. */
+  displayName: string;
+};
+
+export interface UserRepository {
+  getContact(tenantId: TenantId, userId: UserId): Promise<UserContact | null>;
+}
+
 export type Repositories = {
   experiences: ExperienceRepository;
   bookings: BookingRepository;
@@ -142,4 +165,5 @@ export type Repositories = {
   incidents: IncidentRepository;
   reputation: ReputationRepository;
   ledger: LedgerRepository;
+  users: UserRepository;
 };
