@@ -90,7 +90,7 @@ export function Header({
                   }`}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
-                  onClick={() => setActiveMenu(isOpen ? null : index)}
+                  onClick={() => setActiveMenu(index)}
                   onFocus={() => setActiveMenu(index)}
                 >
                   {item.label}
