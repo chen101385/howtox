@@ -24,8 +24,8 @@ const db = () => harness.db;
 const familyProfile = {
   firstName: "Morgan",
   lastName: "Lee",
-  childFirstNames: ["Ari", "Zoe"],
-  childAges: [8, 12],
+  childFirstNames: ["Zoe", "Ari"],
+  childAges: [12, 8],
   zipCode: "98101",
 };
 

@@ -22,7 +22,10 @@ import { and, eq, sql } from "drizzle-orm";
 import type { PostgresDatabase } from "@/data/postgres/client";
 import { users } from "@/data/postgres/schema";
 import type { TenantId } from "@/domain/ids";
-import type { FamilyProfile } from "@/domain/sign-in-profile";
+import {
+  familyProfileSchema,
+  type FamilyProfile,
+} from "@/domain/sign-in-profile";
 
 export type ProvisionedUser = {
   id: string;
@@ -116,18 +119,23 @@ export async function ensureUser(args: {
   now?: Date;
 }): Promise<ProvisionedUser> {
   const { db, tenantId, externalAuthId, email, profile } = args;
+  // Re-validate at the persistence boundary too. Callers other than the HTTP
+  // route cannot bypass pair alignment, age bounds, or canonical sorting.
+  const normalizedProfile = profile
+    ? familyProfileSchema.parse(profile)
+    : undefined;
 
   const existing = await findByExternalId(db, tenantId, externalAuthId);
   if (existing) {
-    if (!profile) return existing;
+    if (!normalizedProfile) return existing;
     const [updated] = await db
       .update(users)
       .set({
-        legalFirstName: profile.firstName,
-        legalLastName: profile.lastName,
-        childFirstNames: profile.childFirstNames,
-        childAges: profile.childAges,
-        zipCode: profile.zipCode,
+        legalFirstName: normalizedProfile.firstName,
+        legalLastName: normalizedProfile.lastName,
+        childFirstNames: normalizedProfile.childFirstNames,
+        childAges: normalizedProfile.childAges,
+        zipCode: normalizedProfile.zipCode,
       })
       .where(
         and(eq(users.tenantId, tenantId), eq(users.externalAuthId, externalAuthId))
@@ -147,13 +155,13 @@ export async function ensureUser(args: {
     .update(users)
     .set({
       externalAuthId,
-      ...(profile
+      ...(normalizedProfile
         ? {
-            legalFirstName: profile.firstName,
-            legalLastName: profile.lastName,
-            childFirstNames: profile.childFirstNames,
-            childAges: profile.childAges,
-            zipCode: profile.zipCode,
+            legalFirstName: normalizedProfile.firstName,
+            legalLastName: normalizedProfile.lastName,
+            childFirstNames: normalizedProfile.childFirstNames,
+            childAges: normalizedProfile.childAges,
+            zipCode: normalizedProfile.zipCode,
           }
         : {}),
     })
@@ -177,12 +185,12 @@ export async function ensureUser(args: {
       tenantId,
       // Clients with email-only sign-in do not collect legal names. Empty
       // strings remain the honest fallback rather than guesses from the email.
-      legalFirstName: profile?.firstName ?? "",
-      legalLastName: profile?.lastName ?? "",
+      legalFirstName: normalizedProfile?.firstName ?? "",
+      legalLastName: normalizedProfile?.lastName ?? "",
       email,
-      childFirstNames: profile?.childFirstNames ?? [],
-      childAges: profile?.childAges ?? [],
-      zipCode: profile?.zipCode,
+      childFirstNames: normalizedProfile?.childFirstNames ?? [],
+      childAges: normalizedProfile?.childAges ?? [],
+      zipCode: normalizedProfile?.zipCode,
       verificationStatus: "unverified",
       displayName: displayNameFromEmail(email),
       displayStyle: "nickname",
