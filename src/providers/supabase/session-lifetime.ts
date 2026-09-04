@@ -32,12 +32,16 @@ function base64Url(bytes: Uint8Array): string {
     .replace(/=+$/, "");
 }
 
-function fromBase64Url(value: string): Uint8Array | undefined {
+function fromBase64Url(value: string): Uint8Array<ArrayBuffer> | undefined {
   try {
     const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
     const binary = atob(padded);
-    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
   } catch {
     return undefined;
   }
