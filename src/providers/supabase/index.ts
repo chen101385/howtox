@@ -13,11 +13,12 @@
 
 import { and, eq } from "drizzle-orm";
 import { SupabaseAuthProvider, viewerFromUserRow } from "./auth";
-import { supabaseCredentials } from "./session";
+import { readOnlyClient, supabaseCredentials } from "./session";
 import type { AuthProvider, Viewer } from "../types";
 import { getDatabase } from "@/data/postgres/client";
 import { users } from "@/data/postgres/schema";
 import { CURRENT_TENANT } from "@/data";
+import { client as activeClient } from "@/config/active";
 
 export const SIGN_IN_PATH = "/sign-in";
 export const AUTH_CALLBACK_PATH = "/auth/callback";
@@ -127,7 +128,7 @@ export function createSupabaseAuthProvider(): AuthProvider {
     // out. Failing here beats a deployment that looks configured and silently
     // rejects everybody.
     !process.env.DATABASE_URL && "DATABASE_URL",
-    client.config.integrations.auth?.collectFamilyProfile &&
+    activeClient.config.integrations.auth?.collectFamilyProfile &&
       !process.env.AUTH_PROFILE_COOKIE_SECRET &&
       "AUTH_PROFILE_COOKIE_SECRET",
   ].filter((v): v is string => Boolean(v));

@@ -24,9 +24,10 @@ describe("pending profile cookie", () => {
 
   it("rejects tampering and expired profiles", () => {
     const sealed = sealPendingProfile(pending, SECRET);
-    const replacement = sealed.endsWith("a") ? "b" : "a";
-    expect(openPendingProfile(`${sealed.slice(0, -1)}${replacement}`, SECRET, 9_000))
-      .toBeUndefined();
+    const middle = Math.floor(sealed.length / 2);
+    const replacement = sealed[middle] === "a" ? "b" : "a";
+    const tampered = `${sealed.slice(0, middle)}${replacement}${sealed.slice(middle + 1)}`;
+    expect(openPendingProfile(tampered, SECRET, 9_000)).toBeUndefined();
     expect(openPendingProfile(sealed, SECRET, 10_001)).toBeUndefined();
   });
 });
