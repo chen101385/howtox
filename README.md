@@ -31,6 +31,7 @@ NEXT_PUBLIC_CLIENT=experience-demo npm run dev
 | `collective` | Community brochure, dark theme (legacy) |
 | `template` | The scaffold you copy for a new client |
 | `experience-demo` | **Interactive-experiences marketplace** ("Lantern Rooms") |
+| `how-to-x` | Appointments business ("How to X") |
 
 No environment variables are required. Every third-party integration is a demo
 adapter, so the whole app runs with no credentials. See [`.env.example`](.env.example).
