@@ -91,7 +91,7 @@ async function availableHandle(
   return `${stem}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-async function findByExternalId(
+export async function findProvisionedUser(
   db: PostgresDatabase,
   tenantId: TenantId,
   externalAuthId: string
@@ -125,7 +125,7 @@ export async function ensureUser(args: {
     ? familyProfileSchema.parse(profile)
     : undefined;
 
-  const existing = await findByExternalId(db, tenantId, externalAuthId);
+  const existing = await findProvisionedUser(db, tenantId, externalAuthId);
   if (existing) {
     if (!normalizedProfile) return existing;
     const [updated] = await db
@@ -206,7 +206,7 @@ export async function ensureUser(args: {
 
   // Lost a race, or hit the email/handle unique index. Re-read: the winner's row
   // is the correct answer for both.
-  const settled = await findByExternalId(db, tenantId, externalAuthId);
+  const settled = await findProvisionedUser(db, tenantId, externalAuthId);
   if (settled) return settled;
 
   throw new Error(

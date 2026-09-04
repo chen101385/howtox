@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import type { AuthFlowMode } from "@/domain/auth-flow";
 import { MAX_CHILD_AGE } from "@/domain/sign-in-profile";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
 /**
- * Email magic-link sign-in.
+ * Email magic-link authentication for separate sign-up and log-in flows.
  *
  * The success message is identical whether or not an account exists for the
  * address — the server answers that way too, so this form is not an account
@@ -19,12 +20,15 @@ type Status = "idle" | "sending" | "sent" | "error";
 type ChildInput = { id: number; firstName: string; age: string };
 
 export function SignInForm({
+  mode,
   next,
   collectFamilyProfile = false,
 }: {
+  mode: AuthFlowMode;
   next?: string;
   collectFamilyProfile?: boolean;
 }) {
+  const collectsProfile = mode === "sign-up" && collectFamilyProfile;
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -45,9 +49,10 @@ export function SignInForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          mode,
           email,
           next,
-          ...(collectFamilyProfile
+          ...(collectsProfile
             ? {
                 profile: {
                   firstName,
@@ -93,6 +98,7 @@ export function SignInForm({
   }
 
   if (status === "sent") {
+    const action = mode === "sign-up" ? "sign-up" : "log-in";
     return (
       <div
         className="rounded-theme border border-border bg-surface p-6"
@@ -102,8 +108,9 @@ export function SignInForm({
         <p className="font-medium text-fg">Check your email</p>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           If <strong className="font-medium text-fg">{email}</strong> can receive
-          mail from us, a sign-in link is on its way. It expires in about an hour
-          and works once.
+          mail from us, a {action} link is on its way. Click it within about an
+          hour to finish {action === "sign-up" ? "creating your account" : "logging in"}.
+          The link works once and returns you signed in.
         </p>
         <button
           type="button"
@@ -118,7 +125,7 @@ export function SignInForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {collectFamilyProfile && (
+      {collectsProfile && (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -265,11 +272,13 @@ export function SignInForm({
         disabled={status === "sending"}
         className="w-full rounded-theme bg-primary px-4 py-2.5 font-medium text-primary-fg transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {status === "sending" ? "Sending…" : "Email me a sign-in link"}
+        {status === "sending"
+          ? "Sending…"
+          : `Email me a ${mode === "sign-up" ? "sign-up" : "log-in"} link`}
       </button>
 
       <p className="text-xs leading-relaxed text-muted">
-        No password. We email you a link that signs you in.
+        No password. We email you a one-time link that signs you in.
       </p>
     </form>
   );

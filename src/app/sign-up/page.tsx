@@ -6,29 +6,21 @@ import { client } from "@/config/active";
 import { activeAuthProvider, getProviders } from "@/providers";
 import { safeRedirectPath } from "@/lib/redirect";
 
-/**
- * Sign-in.
- *
- * 404s unless the active client selects a real auth provider — a deployment on
- * the demo adapter has seeded personas and nothing to sign in to, and offering a
- * form that cannot work is worse than not offering one.
- */
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: `Log in — ${client.config.site.brand.name}`,
-  description: "Log in with an emailed link.",
+  title: `Sign up — ${client.config.site.brand.name}`,
+  description: "Create an account with an emailed sign-up link.",
 };
 
-/** Reasons the callback can bounce someone back here, in plain language. */
 const ERRORS: Record<string, string> = {
   link_invalid:
-    "That log-in link did not work. Links expire after about an hour and can only be used once — request a new one below.",
-  account_not_found:
-    "We could not find a completed account for that log-in. Sign up first, then use the emailed link to finish creating it.",
+    "That sign-up link did not work. Links expire after about an hour and can only be used once — request a new one below.",
+  provisioning_failed:
+    "We verified your email but could not finish creating your account. Request a new sign-up link and try again.",
 };
 
-export default async function SignInPage({
+export default async function SignUpPage({
   searchParams,
 }: {
   searchParams: { error?: string; next?: string };
@@ -36,22 +28,19 @@ export default async function SignInPage({
   if (activeAuthProvider() === "demo") notFound();
 
   const next = safeRedirectPath(searchParams.next);
-
-  // Already signed in — send them where they were going rather than showing a
-  // form that would do nothing.
   const viewer = await getProviders().auth.getViewer();
   if (viewer) redirect(next);
 
   const error = searchParams.error ? ERRORS[searchParams.error] : undefined;
-  const signUpHref =
-    next === "/" ? "/sign-up" : `/sign-up?next=${encodeURIComponent(next)}`;
+  const logInHref =
+    next === "/" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(next)}`;
 
   return (
     <Container className="py-16">
       <div className="mx-auto max-w-md">
-        <h1 className="font-heading text-3xl font-bold text-fg">Log in</h1>
+        <h1 className="font-heading text-3xl font-bold text-fg">Sign up</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          {`Log in to continue on ${client.config.site.brand.name}.`}
+          {`Create your ${client.config.site.brand.name} account. We’ll email a one-time link to finish signing you in.`}
         </p>
 
         {error && (
@@ -65,17 +54,21 @@ export default async function SignInPage({
 
         <div className="mt-8">
           <SignInForm
-            mode="log-in"
+            mode="sign-up"
             next={next === "/" ? undefined : next}
+            collectFamilyProfile={
+              client.config.integrations.auth?.collectFamilyProfile ?? false
+            }
           />
         </div>
+
         <p className="mt-6 text-center text-sm text-muted">
-          New here?{" "}
+          Already have an account?{" "}
           <a
-            href={signUpHref}
+            href={logInHref}
             className="font-medium text-primary underline underline-offset-4"
           >
-            Sign up
+            Log in
           </a>
         </p>
       </div>

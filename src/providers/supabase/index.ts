@@ -21,6 +21,7 @@ import { CURRENT_TENANT } from "@/data";
 import { client as activeClient } from "@/config/active";
 
 export const SIGN_IN_PATH = "/sign-in";
+export const SIGN_UP_PATH = "/sign-up";
 export const AUTH_CALLBACK_PATH = "/auth/callback";
 
 export class SupabaseConfigError extends Error {
@@ -145,7 +146,7 @@ export function createSupabaseAuthProvider(): AuthProvider {
 
 export { SupabaseAuthProvider, viewerFromUserRow };
 export { mutableClient, readOnlyClient, supabaseCredentials } from "./session";
-export { ensureUser } from "./provisioning";
+export { ensureUser, findProvisionedUser } from "./provisioning";
 export {
   clearPendingProfile,
   createPendingProfileNonce,

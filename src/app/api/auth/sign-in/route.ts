@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { activeAuthProvider } from "@/providers";
 import { AUTH_CALLBACK_PATH } from "@/providers/supabase";
 import { client } from "@/config/active";
-import { familyProfileSchema, type FamilyProfile } from "@/domain/sign-in-profile";
+import { parseAuthRequest, type AuthRequest } from "@/domain/auth-flow";
 import { safeRedirectPath } from "@/lib/redirect";
 import {
   RATE_LIMITS,
@@ -12,7 +11,7 @@ import {
 } from "@/lib/rate-limit-guard";
 
 /**
- * Sign-in initiation — email magic link.
+ * Magic-link initiation for sign-up and returning-user log-in.
  *
  * No passwords: nothing here stores, hashes, resets or leaks one, and there is
  * no credential for an attacker to stuff. The tradeoff is a dependency on email
@@ -27,34 +26,20 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-const baseBodySchema = z.object({
-  email: z.string().email().max(320),
-  /** Where to land after sign-in. Validated below, never trusted as given. */
-  next: z.string().max(512).optional(),
-});
-
-const familyBodySchema = baseBodySchema.extend({
-  profile: familyProfileSchema,
-});
-
 export async function POST(request: Request) {
   if (activeAuthProvider() !== "supabase") {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
 
-  let parsed: {
-    email: string;
-    next?: string;
-    profile?: FamilyProfile;
-  };
+  let parsed: AuthRequest;
   try {
-    const body: unknown = await request.json();
-    parsed = client.config.integrations.auth?.collectFamilyProfile
-      ? familyBodySchema.parse(body)
-      : baseBodySchema.parse(body);
+    parsed = parseAuthRequest(
+      await request.json(),
+      client.config.integrations.auth?.collectFamilyProfile ?? false
+    );
   } catch {
     return NextResponse.json(
-      { error: "Check every profile field and try again." },
+      { error: "Check the form fields and try again." },
       { status: 400 }
     );
   }
@@ -92,17 +77,19 @@ export async function POST(request: Request) {
   const redirectTo = new URL(AUTH_CALLBACK_PATH, request.url);
   const next = safeRedirectPath(parsed.next);
   if (next !== "/") redirectTo.searchParams.set("next", next);
-  const profileNonce = parsed.profile ? createPendingProfileNonce() : undefined;
+  redirectTo.searchParams.set("flow", parsed.mode);
+  const profile = "profile" in parsed ? parsed.profile : undefined;
+  const profileNonce = profile ? createPendingProfileNonce() : undefined;
   if (profileNonce) redirectTo.searchParams.set("profile", profileNonce);
 
   // Write the encrypted, short-lived profile before sending mail so a missing
   // server secret fails without sending a link that cannot finish sign-in.
-  if (parsed.profile && profileNonce) {
+  if (profile && profileNonce) {
     try {
       storePendingProfile({
         email: parsed.email,
         nonce: profileNonce,
-        profile: parsed.profile,
+        profile,
       });
     } catch (cause) {
       console.error("[auth] pending profile setup failed:", cause);
@@ -115,11 +102,16 @@ export async function POST(request: Request) {
 
   const { error } = await mutableClient().auth.signInWithOtp({
     email: parsed.email,
-    options: { emailRedirectTo: redirectTo.toString() },
+    options: {
+      emailRedirectTo: redirectTo.toString(),
+      // Log in must not silently create a new Supabase identity. Sign up is the
+      // only flow allowed to create both the identity and application account.
+      shouldCreateUser: parsed.mode === "sign-up",
+    },
   });
 
   if (error) {
-    if (parsed.profile) clearPendingProfile();
+    if (profile) clearPendingProfile();
     // Rate limiting is the expected failure and is worth saying plainly; the
     // rest stays generic so nothing about the account is revealed.
     const message =
