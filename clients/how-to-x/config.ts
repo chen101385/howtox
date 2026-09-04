@@ -52,13 +52,89 @@ const config: ClientConfig = {
     },
 
     nav: {
-      links: [
-        { label: "Services", href: "#services" },
-        { label: "How it works", href: "#about" },
-        { label: "Pricing", href: "#pricing" },
-        { label: "FAQ", href: "#faq" },
+      links: [],
+      megaMenu: [
+        {
+          label: "Who it’s for",
+          title: "Who it’s for",
+          description:
+            "Focused one-to-one support for the person or group ready to move a piece of work forward.",
+          groups: [
+            {
+              label: "People",
+              links: [
+                { label: "Individuals", href: "/placeholder/individuals" },
+                { label: "Teams", href: "/placeholder/teams" },
+                { label: "Founders", href: "/placeholder/founders" },
+              ],
+            },
+          ],
+        },
+        {
+          label: "Services",
+          title: "Services",
+          description:
+            "Choose the shape of session that fits where the work is right now.",
+          groups: [
+            {
+              label: "Sessions",
+              links: [
+                { label: "First session", href: "/placeholder/first-session" },
+                { label: "Working session", href: "/placeholder/working-session" },
+                { label: "Follow-up", href: "/placeholder/follow-up" },
+              ],
+            },
+          ],
+        },
+        {
+          label: "How it works",
+          title: "How it works",
+          description:
+            "A simple rhythm before, during, and after each focused conversation.",
+          groups: [
+            {
+              label: "Steps",
+              links: [
+                { label: "Booking", href: "/placeholder/booking" },
+                { label: "Prep", href: "/placeholder/prep" },
+                { label: "Recap", href: "/placeholder/recap" },
+              ],
+            },
+          ],
+        },
+        {
+          label: "Resources",
+          title: "Resources",
+          description:
+            "Practical answers and prompts to help you arrive ready to work.",
+          groups: [
+            {
+              label: "Explore",
+              links: [
+                { label: "Guides", href: "/placeholder/guides" },
+                { label: "FAQ", href: "/#faq" },
+              ],
+            },
+          ],
+        },
+        {
+          label: "About",
+          title: "About",
+          description:
+            "Learn what How to X is for and how to start a conversation.",
+          groups: [
+            {
+              label: "How to X",
+              links: [
+                { label: "About How to X", href: "/placeholder/about" },
+                { label: "Contact", href: "/placeholder/contact" },
+              ],
+            },
+          ],
+        },
       ],
-      cta: { label: "Book a first session", href: "#booking", emphasized: true },
+      secondaryCta: { label: "Log in", href: "/sign-in" },
+      cta: { label: "Book a first session", href: "/#booking", emphasized: true },
     },
 
     seo: {

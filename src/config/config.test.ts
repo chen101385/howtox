@@ -14,6 +14,7 @@ import { MARKETPLACE_TERMINOLOGY, DEFAULT_TERMINOLOGY } from "./terminology";
 import { DEFAULT_COMPENSATION_POLICY } from "@/domain/ledger";
 import type { ClientConfig } from "./client-config";
 import experienceDemo from "@clients/experience-demo/client";
+import howToX from "@clients/how-to-x/config";
 import teenEdge from "@clients/teen-edge/config";
 
 /** A valid marketplace config used as the base for negative cases. */
@@ -31,6 +32,27 @@ describe("every registered client validates", () => {
       expect(() => resolveBySlug(slug)).not.toThrow();
     });
   }
+});
+
+describe("mega-menu navigation", () => {
+  it("preserves configured mega-menu items when resolving a client", () => {
+    const labels = resolveClient(howToX).nav.megaMenu?.map((item) => item.label);
+
+    expect(labels).toEqual([
+      "Who it’s for",
+      "Services",
+      "How it works",
+      "Resources",
+      "About",
+    ]);
+  });
+
+  it("rejects a mega-menu item without link groups", () => {
+    const malformed = structuredClone(howToX);
+    malformed.site.nav.megaMenu![0].groups = [];
+
+    expect(() => validateClientConfig(malformed)).toThrow(/groups/);
+  });
 });
 
 describe("module dependency validation", () => {

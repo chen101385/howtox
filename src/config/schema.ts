@@ -33,6 +33,20 @@ const link = z.object({
   external: z.boolean().optional(),
 });
 
+const megaMenuItem = z.object({
+  label: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  groups: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        links: z.array(link).min(1),
+      })
+    )
+    .min(1),
+});
+
 const termPair = z.object({
   singular: z.string().min(1),
   plural: z.string().min(1),
@@ -148,7 +162,12 @@ export const clientConfigSchema = z.object({
     }),
     theme: themeConfig,
     contact: z.unknown().optional(),
-    nav: z.object({ links: z.array(link), cta: link.optional() }),
+    nav: z.object({
+      links: z.array(link),
+      megaMenu: z.array(megaMenuItem).min(1).optional(),
+      secondaryCta: link.optional(),
+      cta: link.optional(),
+    }),
     seo: z.object({
       title: z.string().min(1),
       description: z.string().min(1),

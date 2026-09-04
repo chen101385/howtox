@@ -33,6 +33,18 @@ export type Link = {
   external?: boolean;
 };
 
+export type MegaMenuGroup = {
+  label: string;
+  links: Link[];
+};
+
+export type MegaMenuItem = {
+  label: string;
+  title: string;
+  description: string;
+  groups: MegaMenuGroup[];
+};
+
 export type IconName = string; // maps to an icon registry entry (see components/Icon)
 
 /* ------------------------------- Brand --------------------------------- */
@@ -230,6 +242,10 @@ export type Seo = {
 
 export type Navigation = {
   links: Link[];
+  /** Optional full-width dropdown navigation. Flat links remain the fallback. */
+  megaMenu?: MegaMenuItem[];
+  /** Supporting action shown before the primary CTA. */
+  secondaryCta?: Link;
   cta?: Link;
 };
 
