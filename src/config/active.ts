@@ -26,7 +26,7 @@ const registry: Record<string, SiteConfig | ClientConfig> = {
 
 export const CLIENT_SLUGS = Object.keys(registry);
 
-const DEFAULT_CLIENT = "teen-edge";
+const DEFAULT_CLIENT = "how-to-x";
 
 /**
  * Which client this build serves. In the one-deploy-per-client model, set

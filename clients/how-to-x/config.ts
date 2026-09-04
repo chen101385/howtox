@@ -24,8 +24,8 @@ const config: ClientConfig = {
 
     theme: {
       colors: {
-        // Warm paper, espresso, and copper — distinct from teen-edge teal,
-        // mentor-academy violet, and collective rose-on-dark.
+        // Warm paper, espresso and copper — deliberately unlike the other
+        // demo clients so a rebrand is visible at a glance.
         primary: "#8c4a2f",
         primaryFg: "#fffaf5",
         secondary: "#1f1714",
@@ -220,7 +220,9 @@ const config: ClientConfig = {
 
   integrations: {
     formEndpoint: "/api/lead",
-    bookingEmbedUrl: "https://cal.com/your-handle/intro",
+    // No scheduler is connected. The booking section renders its "not connected
+    // yet" placeholder rather than an iframe pointing at a handle nobody owns;
+    // add the real embed URL when the calendar exists.
   },
 };
 
