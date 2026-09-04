@@ -7,9 +7,11 @@ import { Container } from "@/components/Container";
 export function BookingEmbed({
   embedUrl,
   heading,
+  provider,
 }: {
   embedUrl?: string;
   heading?: string;
+  provider?: "cal.com";
 }) {
   return (
     <section id="booking" className="bg-surface py-20">
@@ -31,12 +33,14 @@ export function BookingEmbed({
           ) : (
             <div className="flex min-h-[320px] flex-col items-center justify-center rounded-theme border border-dashed border-border bg-bg p-10 text-center">
               <h3 className="font-heading text-lg font-semibold text-fg">
-                Scheduling is not connected yet
+                {provider === "cal.com"
+                  ? "Scheduling will connect through Cal.com"
+                  : "Scheduling is not connected yet"}
               </h3>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
-                A scheduling calendar has not been linked for this site. Once a
-                booking link is added to the configuration, the calendar appears
-                here automatically.
+                {provider === "cal.com"
+                  ? "The signed-in booking area is ready. Add the Cal.com link to configuration or NEXT_PUBLIC_CAL_LINK and the calendar will appear here automatically."
+                  : "A scheduling calendar has not been linked for this site. Once a booking link is added to the configuration, the calendar appears here automatically."}
               </p>
             </div>
           )}

@@ -2,9 +2,28 @@
 
 import Image from "next/image";
 import { useEffect, useState, type FocusEvent } from "react";
-import type { Brand, Navigation } from "@/config/types";
+import type { Brand, Link, Navigation } from "@/config/types";
 import { Container } from "@/components/Container";
 import { Button } from "@/components/Button";
+
+export function resolveHeaderActions(
+  nav: Navigation,
+  signedIn: boolean
+): {
+  signedOut: Link[];
+  secondary?: Link;
+  primary?: Link;
+} {
+  return {
+    signedOut:
+      !signedIn && nav.authCtas
+        ? [nav.authCtas.signUp, nav.authCtas.signIn]
+        : [],
+    secondary: !signedIn && !nav.authCtas ? nav.secondaryCta : undefined,
+    primary:
+      nav.cta && (!nav.ctaRequiresAuth || signedIn) ? nav.cta : undefined,
+  };
+}
 
 /**
  * Sticky top nav. Brand, links, optional mega-menu and actions all come from config.
@@ -16,16 +35,19 @@ export function Header({
   brand,
   nav,
   viewerMenu,
-  showSecondaryCta = true,
+  viewerSignedIn = false,
 }: {
   brand: Brand;
   nav: Navigation;
   viewerMenu?: React.ReactNode;
-  showSecondaryCta?: boolean;
+  viewerSignedIn?: boolean;
 }) {
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const hasMegaMenu = Boolean(nav.megaMenu?.length);
+  const actions = resolveHeaderActions(nav, viewerSignedIn);
+  const visibleViewerMenu =
+    viewerSignedIn || !nav.authCtas ? viewerMenu : null;
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -158,9 +180,12 @@ export function Header({
         </nav>
 
         <div className="ml-auto hidden shrink-0 items-center gap-3 lg:flex">
-          {viewerMenu}
-          {showSecondaryCta && nav.secondaryCta && <Button link={nav.secondaryCta} />}
-          {nav.cta && <Button link={nav.cta} />}
+          {visibleViewerMenu}
+          {actions.signedOut.map((link) => (
+            <Button key={`${link.label}-${link.href}`} link={link} />
+          ))}
+          {actions.secondary && <Button link={actions.secondary} />}
+          {actions.primary && <Button link={actions.primary} />}
         </div>
 
         <button
@@ -240,11 +265,18 @@ export function Header({
           </nav>
 
           <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
-            {viewerMenu}
-            {showSecondaryCta && nav.secondaryCta && (
-              <Button link={nav.secondaryCta} className="w-full" />
+            {visibleViewerMenu}
+            {actions.signedOut.map((link) => (
+              <Button
+                key={`${link.label}-${link.href}`}
+                link={link}
+                className="w-full"
+              />
+            ))}
+            {actions.secondary && (
+              <Button link={actions.secondary} className="w-full" />
             )}
-            {nav.cta && <Button link={nav.cta} className="w-full" />}
+            {actions.primary && <Button link={actions.primary} className="w-full" />}
           </div>
         </Container>
       </div>

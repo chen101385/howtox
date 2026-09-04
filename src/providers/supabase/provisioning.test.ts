@@ -7,6 +7,7 @@ import {
   displayNameFromEmail,
   ensureUser,
   handleStemFromEmail,
+  recordSuccessfulLogin,
 } from "./provisioning";
 
 /**
@@ -124,6 +125,47 @@ describe("ensureUser", () => {
         )
       );
     expect(row).toEqual({ legalFirstName: "Morgana", zipCode: "98101-1234" });
+  });
+
+  it("records the last successful callback for new and returning users", async () => {
+    const firstLogin = new Date("2026-09-04T12:00:00.000Z");
+    await ensureUser({
+      db: db(),
+      tenantId: TENANT,
+      externalAuthId: "sb_last_login",
+      email: "last-login@example.invalid",
+      profile: familyProfile,
+      lastSuccessfulLogin: firstLogin,
+    });
+
+    const returningLogin = new Date("2026-09-04T15:00:00.000Z");
+    await recordSuccessfulLogin({
+      db: db(),
+      tenantId: TENANT,
+      externalAuthId: "sb_last_login",
+      at: returningLogin,
+    });
+
+    const [row] = await db()
+      .select({ lastSuccessfulLogin: users.lastSuccessfulLogin })
+      .from(users)
+      .where(
+        and(
+          eq(users.tenantId, TENANT),
+          eq(users.externalAuthId, "sb_last_login")
+        )
+      );
+    expect(row.lastSuccessfulLogin).toEqual(returningLogin);
+  });
+
+  it("does not create an account while recording a returning-user login", async () => {
+    const result = await recordSuccessfulLogin({
+      db: db(),
+      tenantId: TENANT,
+      externalAuthId: "sb_missing_login",
+      at: new Date(),
+    });
+    expect(result).toBeUndefined();
   });
 
   it("is idempotent — a returning user gets the same account", async () => {

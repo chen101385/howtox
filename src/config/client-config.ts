@@ -185,6 +185,12 @@ export type IntegrationsConfig = {
   session?: { provider: "demo" | "livekit" | "daily" | "zoom" };
   media?: { provider: "demo" | "mux" | "cloudflare" };
   messaging?: { provider: "demo" | "stream" };
+  /** Appointment scheduler rendered by the signed-in booking section. */
+  scheduler?: {
+    provider: "cal.com";
+    embedUrl?: string;
+    authRequired?: boolean;
+  };
   /** Legacy booking embed for appointment clients. */
   bookingEmbedUrl?: string;
 };

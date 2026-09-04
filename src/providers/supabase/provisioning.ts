@@ -116,9 +116,17 @@ export async function ensureUser(args: {
   externalAuthId: string;
   email: string;
   profile?: FamilyProfile;
+  lastSuccessfulLogin?: Date;
   now?: Date;
 }): Promise<ProvisionedUser> {
-  const { db, tenantId, externalAuthId, email, profile } = args;
+  const {
+    db,
+    tenantId,
+    externalAuthId,
+    email,
+    profile,
+    lastSuccessfulLogin,
+  } = args;
   // Re-validate at the persistence boundary too. Callers other than the HTTP
   // route cannot bypass pair alignment, age bounds, or canonical sorting.
   const normalizedProfile = profile
@@ -127,15 +135,20 @@ export async function ensureUser(args: {
 
   const existing = await findProvisionedUser(db, tenantId, externalAuthId);
   if (existing) {
-    if (!normalizedProfile) return existing;
+    if (!normalizedProfile && !lastSuccessfulLogin) return existing;
     const [updated] = await db
       .update(users)
       .set({
-        legalFirstName: normalizedProfile.firstName,
-        legalLastName: normalizedProfile.lastName,
-        childFirstNames: normalizedProfile.childFirstNames,
-        childAges: normalizedProfile.childAges,
-        zipCode: normalizedProfile.zipCode,
+        ...(normalizedProfile
+          ? {
+              legalFirstName: normalizedProfile.firstName,
+              legalLastName: normalizedProfile.lastName,
+              childFirstNames: normalizedProfile.childFirstNames,
+              childAges: normalizedProfile.childAges,
+              zipCode: normalizedProfile.zipCode,
+            }
+          : {}),
+        ...(lastSuccessfulLogin ? { lastSuccessfulLogin } : {}),
       })
       .where(
         and(eq(users.tenantId, tenantId), eq(users.externalAuthId, externalAuthId))
@@ -164,6 +177,7 @@ export async function ensureUser(args: {
             zipCode: normalizedProfile.zipCode,
           }
         : {}),
+      ...(lastSuccessfulLogin ? { lastSuccessfulLogin } : {}),
     })
     .where(
       and(
@@ -197,6 +211,7 @@ export async function ensureUser(args: {
       handle,
       roles: ["guest"],
       externalAuthId,
+      lastSuccessfulLogin,
       createdAt: args.now ?? new Date(),
     })
     .onConflictDoNothing()
@@ -214,4 +229,27 @@ export async function ensureUser(args: {
       `but no row with that external id exists — most likely the email or handle ` +
       `is already taken by an account linked to a different identity.`
   );
+}
+
+/**
+ * Records only callbacks that established a verified session for an existing
+ * application account. A missing row stays missing; log-in never provisions.
+ */
+export async function recordSuccessfulLogin(args: {
+  db: PostgresDatabase;
+  tenantId: TenantId;
+  externalAuthId: string;
+  at: Date;
+}): Promise<ProvisionedUser | undefined> {
+  const [updated] = await args.db
+    .update(users)
+    .set({ lastSuccessfulLogin: args.at })
+    .where(
+      and(
+        eq(users.tenantId, args.tenantId),
+        eq(users.externalAuthId, args.externalAuthId)
+      )
+    )
+    .returning(publicColumns);
+  return updated;
 }

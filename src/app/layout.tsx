@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           brand={site.brand}
           nav={client.nav}
           viewerMenu={viewerMenu.menu}
-          showSecondaryCta={!viewerMenu.signedIn}
+          viewerSignedIn={viewerMenu.signedIn}
         />
         <main>{children}</main>
         <Footer

@@ -202,6 +202,7 @@ export const users = pgTable(
     roles: roleEnum("roles").array().notNull().default(["guest"]),
     /** Set when an external identity provider (e.g. Supabase Auth) owns the login. */
     externalAuthId: text("external_auth_id"),
+    lastSuccessfulLogin: timestamp("last_successful_login", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

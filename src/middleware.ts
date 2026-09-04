@@ -21,6 +21,11 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  SESSION_LIFETIME_COOKIE,
+  sessionCookieSecret,
+  verifySessionDeadline,
+} from "@/providers/supabase/session-lifetime";
 
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,7 +54,31 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser();
+
+  if (data.user) {
+    let lifetimeValid = false;
+    try {
+      lifetimeValid = await verifySessionDeadline(
+        request.cookies.get(SESSION_LIFETIME_COOKIE)?.value,
+        sessionCookieSecret()
+      );
+    } catch {
+      // A live session without the server-side signing secret cannot satisfy
+      // the application's fixed lifetime guarantee.
+    }
+
+    if (!lifetimeValid) {
+      await supabase.auth.signOut();
+      response.cookies.set(SESSION_LIFETIME_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+    }
+  }
 
   return response;
 }

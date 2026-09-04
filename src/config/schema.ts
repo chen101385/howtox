@@ -31,6 +31,7 @@ const link = z.object({
   href: z.string().min(1),
   emphasized: z.boolean().optional(),
   external: z.boolean().optional(),
+  requiresAuth: z.boolean().optional(),
 });
 
 const megaMenuItem = z.object({
@@ -165,7 +166,14 @@ export const clientConfigSchema = z.object({
     nav: z.object({
       links: z.array(link),
       megaMenu: z.array(megaMenuItem).min(1).optional(),
+      authCtas: z
+        .object({
+          signUp: link,
+          signIn: link,
+        })
+        .optional(),
       secondaryCta: link.optional(),
+      ctaRequiresAuth: z.boolean().optional(),
       cta: link.optional(),
     }),
     seo: z.object({
@@ -212,6 +220,13 @@ export const clientConfigSchema = z.object({
       .optional(),
     messaging: z
       .object({ provider: z.enum(["demo", "stream"]) })
+      .optional(),
+    scheduler: z
+      .object({
+        provider: z.literal("cal.com"),
+        embedUrl: z.string().url().optional(),
+        authRequired: z.boolean().optional(),
+      })
       .optional(),
     bookingEmbedUrl: z.string().optional(),
   }),

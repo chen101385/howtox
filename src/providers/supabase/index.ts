@@ -18,7 +18,6 @@ import type { AuthProvider, Viewer } from "../types";
 import { getDatabase } from "@/data/postgres/client";
 import { users } from "@/data/postgres/schema";
 import { CURRENT_TENANT } from "@/data";
-import { client as activeClient } from "@/config/active";
 
 export const SIGN_IN_PATH = "/sign-in";
 export const SIGN_UP_PATH = "/sign-up";
@@ -129,9 +128,7 @@ export function createSupabaseAuthProvider(): AuthProvider {
     // out. Failing here beats a deployment that looks configured and silently
     // rejects everybody.
     !process.env.DATABASE_URL && "DATABASE_URL",
-    activeClient.config.integrations.auth?.collectFamilyProfile &&
-      !process.env.AUTH_PROFILE_COOKIE_SECRET &&
-      "AUTH_PROFILE_COOKIE_SECRET",
+    !process.env.AUTH_PROFILE_COOKIE_SECRET && "AUTH_PROFILE_COOKIE_SECRET",
   ].filter((v): v is string => Boolean(v));
 
   if (missing.length > 0) throw new SupabaseConfigError(missing);
@@ -146,10 +143,23 @@ export function createSupabaseAuthProvider(): AuthProvider {
 
 export { SupabaseAuthProvider, viewerFromUserRow };
 export { mutableClient, readOnlyClient, supabaseCredentials } from "./session";
-export { ensureUser, findProvisionedUser } from "./provisioning";
+export {
+  ensureUser,
+  findProvisionedUser,
+  recordSuccessfulLogin,
+} from "./provisioning";
 export {
   clearPendingProfile,
   createPendingProfileNonce,
   readPendingProfile,
   storePendingProfile,
 } from "./pending-profile";
+export {
+  SESSION_DURATION_SECONDS,
+  SESSION_LIFETIME_COOKIE,
+  verifySessionDeadline,
+} from "./session-lifetime";
+export {
+  clearSessionLifetime,
+  startSessionLifetime,
+} from "./session-cookie";

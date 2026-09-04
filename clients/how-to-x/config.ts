@@ -133,7 +133,11 @@ const config: ClientConfig = {
           ],
         },
       ],
-      secondaryCta: { label: "Log in", href: "/sign-in" },
+      authCtas: {
+        signUp: { label: "Sign-up", href: "/sign-up", emphasized: true },
+        signIn: { label: "Sign-in", href: "/sign-in" },
+      },
+      ctaRequiresAuth: true,
       cta: { label: "Book a first session", href: "/#booking", emphasized: true },
     },
 
@@ -149,7 +153,12 @@ const config: ClientConfig = {
         headline: "The thing you've been circling has a next step",
         subheadline:
           "How to X is a working session, not a pep talk. Bring the skill, project, or decision that's been sitting in the back of your mind. We'll name it, cut it down to size, and book the work.",
-        ctaPrimary: { label: "Book a first session", href: "#booking", emphasized: true },
+        ctaPrimary: {
+          label: "Book a first session",
+          href: "#booking",
+          emphasized: true,
+          requiresAuth: true,
+        },
         ctaSecondary: { label: "See how sessions work", href: "#about" },
         highlights: ["Remote by default", "No package lock-in", "Leave with a written next step"],
       },
@@ -217,7 +226,11 @@ const config: ClientConfig = {
             cadence: "one-off",
             description: "Name the X and decide whether to keep going.",
             features: ["45-minute call", "Same-day recap", "No follow-up obligation"],
-            cta: { label: "Book a first session", href: "#booking" },
+            cta: {
+              label: "Book a first session",
+              href: "#booking",
+              requiresAuth: true,
+            },
           },
           {
             name: "Working session",
@@ -229,7 +242,11 @@ const config: ClientConfig = {
               "Written next step",
               "Book the next hour when you need it",
             ],
-            cta: { label: "Book a working session", href: "#booking" },
+            cta: {
+              label: "Book a working session",
+              href: "#booking",
+              requiresAuth: true,
+            },
             featured: true,
           },
         ],
@@ -262,7 +279,12 @@ const config: ClientConfig = {
       cta: {
         heading: "Bring the thing you've been putting off",
         subheading: "A first session is 45 minutes. You leave with a next step, even if we don't meet again.",
-        button: { label: "Book a first session", href: "#booking", emphasized: true },
+        button: {
+          label: "Book a first session",
+          href: "#booking",
+          emphasized: true,
+          requiresAuth: true,
+        },
       },
     },
   },
@@ -300,6 +322,7 @@ const config: ClientConfig = {
       provider: "demo",
       collectFamilyProfile: true,
     },
+    scheduler: { provider: "cal.com", authRequired: true },
     // No scheduler is connected. The booking section renders its "not connected
     // yet" placeholder rather than an iframe pointing at a handle nobody owns;
     // add the real embed URL when the calendar exists.

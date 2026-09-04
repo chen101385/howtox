@@ -13,6 +13,7 @@ import type { ResolvedClient } from "@/config/resolve";
  */
 export type SectionContext = {
   client: ResolvedClient;
+  viewerSignedIn: boolean;
   options?: Record<string, unknown>;
 };
 

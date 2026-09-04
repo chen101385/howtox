@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import type { PageComposition } from "@/config/client-config";
 import type { ResolvedClient } from "@/config/resolve";
 import { getSectionRenderer } from "./registry";
+import { activeAuthProvider, getProviders } from "@/providers";
 
 /**
  * Renders a page from its configured composition.
@@ -17,6 +18,9 @@ export async function PageRenderer({
   composition: PageComposition;
   client: ResolvedClient;
 }) {
+  const viewerSignedIn =
+    activeAuthProvider() !== "demo" &&
+    Boolean(await getProviders().auth.getViewer());
   const nodes = await Promise.all(
     composition.sections.map(async (section) => {
       const renderer = getSectionRenderer(section.id);
@@ -31,7 +35,7 @@ export async function PageRenderer({
         return null;
       }
 
-      return renderer({ client, options: section.options });
+      return renderer({ client, viewerSignedIn, options: section.options });
     })
   );
 

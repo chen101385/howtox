@@ -8,9 +8,10 @@ import {
   SIGN_UP_PATH,
   clearPendingProfile,
   ensureUser,
-  findProvisionedUser,
   mutableClient,
   readPendingProfile,
+  recordSuccessfulLogin,
+  startSessionLifetime,
 } from "@/providers/supabase";
 import { safeRedirectPath } from "@/lib/redirect";
 
@@ -91,17 +92,20 @@ export async function GET(request: Request) {
   }
 
   const db = getDatabase(process.env.DATABASE_URL ?? "");
+  const loginAt = new Date();
 
   if (flow === "log-in") {
-    const existing = await findProvisionedUser(
+    const existing = await recordSuccessfulLogin({
       db,
-      CURRENT_TENANT,
-      data.user.id
-    );
+      tenantId: CURRENT_TENANT,
+      externalAuthId: data.user.id,
+      at: loginAt,
+    });
     if (!existing) {
       await supabase.auth.signOut();
       return failure(request, flow, "account_not_found");
     }
+    await startSessionLifetime(loginAt.getTime());
     return NextResponse.redirect(new URL(next, request.url));
   }
 
@@ -117,8 +121,10 @@ export async function GET(request: Request) {
       externalAuthId: data.user.id,
       email: data.user.email,
       profile,
+      lastSuccessfulLogin: loginAt,
     });
     if (profile) clearPendingProfile();
+    await startSessionLifetime(loginAt.getTime());
   } catch (cause) {
     // The session cookie is already set at this point. Signing out again avoids
     // stranding someone in the state the adapter warns about: authenticated to
