@@ -62,7 +62,12 @@ export default async function SignInPage({
         )}
 
         <div className="mt-8">
-          <SignInForm next={next === "/" ? undefined : next} />
+          <SignInForm
+            next={next === "/" ? undefined : next}
+            collectFamilyProfile={
+              client.config.integrations.auth?.collectFamilyProfile ?? false
+            }
+          />
         </div>
       </div>
     </Container>

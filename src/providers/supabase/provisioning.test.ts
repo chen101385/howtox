@@ -21,6 +21,13 @@ const OTHER_TENANT = tenantId("other-tenant");
 
 let harness: TestDatabase;
 const db = () => harness.db;
+const familyProfile = {
+  firstName: "Morgan",
+  lastName: "Lee",
+  childFirstNames: ["Ari", "Zoe"],
+  childAges: [8, 12],
+  zipCode: "98101",
+};
 
 beforeAll(async () => {
   harness = await createTestDatabase();
@@ -62,6 +69,61 @@ describe("ensureUser", () => {
     // would put an unverified guess into a legal-identity field.
     expect(row.legalFirstName).toBe("");
     expect(row.legalLastName).toBe("");
+  });
+
+  it("writes collected family profile fields on first sign-in", async () => {
+    await ensureUser({
+      db: db(),
+      tenantId: TENANT,
+      externalAuthId: "sb_profile",
+      email: "morgan@example.invalid",
+      profile: familyProfile,
+    });
+
+    const [row] = await db()
+      .select({
+        legalFirstName: users.legalFirstName,
+        legalLastName: users.legalLastName,
+        childFirstNames: users.childFirstNames,
+        childAges: users.childAges,
+        zipCode: users.zipCode,
+      })
+      .from(users)
+      .where(and(eq(users.tenantId, TENANT), eq(users.externalAuthId, "sb_profile")));
+
+    expect(row).toEqual({
+      legalFirstName: "Morgan",
+      legalLastName: "Lee",
+      childFirstNames: ["Ari", "Zoe"],
+      childAges: [8, 12],
+      zipCode: "98101",
+    });
+  });
+
+  it("updates a returning user's collected profile without changing the account", async () => {
+    const first = await provision("sb_profile_update", "update@example.invalid");
+    const updated = await ensureUser({
+      db: db(),
+      tenantId: TENANT,
+      externalAuthId: "sb_profile_update",
+      email: "update@example.invalid",
+      profile: { ...familyProfile, firstName: "Morgana", zipCode: "98101-1234" },
+    });
+
+    expect(updated.id).toBe(first.id);
+    const [row] = await db()
+      .select({
+        legalFirstName: users.legalFirstName,
+        zipCode: users.zipCode,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.tenantId, TENANT),
+          eq(users.externalAuthId, "sb_profile_update")
+        )
+      );
+    expect(row).toEqual({ legalFirstName: "Morgana", zipCode: "98101-1234" });
   });
 
   it("is idempotent — a returning user gets the same account", async () => {

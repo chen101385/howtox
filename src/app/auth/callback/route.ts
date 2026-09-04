@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { client } from "@/config/active";
 import { CURRENT_TENANT } from "@/data";
 import { getDatabase } from "@/data/postgres/client";
 import { activeAuthProvider } from "@/providers";
-import { SIGN_IN_PATH, ensureUser, mutableClient } from "@/providers/supabase";
+import {
+  SIGN_IN_PATH,
+  clearPendingProfile,
+  ensureUser,
+  mutableClient,
+  readPendingProfile,
+} from "@/providers/supabase";
 import { safeRedirectPath } from "@/lib/redirect";
 
 /**
@@ -37,6 +44,7 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
+  const profileNonce = requestUrl.searchParams.get("profile");
   const next = safeRedirectPath(requestUrl.searchParams.get("next"));
 
   // Supabase reports its own failures (expired or already-used link) here.
@@ -75,12 +83,19 @@ export async function GET(request: Request) {
   }
 
   try {
+    const profile = readPendingProfile(data.user.email, profileNonce);
+    if (client.config.integrations.auth?.collectFamilyProfile && !profile) {
+      throw new Error("The pending family profile is missing, expired, or invalid.");
+    }
+
     await ensureUser({
       db: getDatabase(process.env.DATABASE_URL ?? ""),
       tenantId: CURRENT_TENANT,
       externalAuthId: data.user.id,
       email: data.user.email,
+      profile,
     });
+    if (profile) clearPendingProfile();
   } catch (cause) {
     // The session cookie is already set at this point. Signing out again avoids
     // stranding someone in the state the adapter warns about: authenticated to

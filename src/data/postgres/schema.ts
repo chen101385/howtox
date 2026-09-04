@@ -176,6 +176,10 @@ export const users = pgTable(
     legalFirstName: text("legal_first_name").notNull(),
     legalLastName: text("legal_last_name").notNull(),
     email: text("email").notNull(),
+    childFirstNames: text("child_first_names").array().notNull().default([]),
+    childAges: integer("child_ages").array().notNull().default([]),
+    /** Nullable only so legacy/demo rows survive the profile-field migration. */
+    zipCode: text("zip_code"),
     phone: text("phone"),
     payoutAccountRef: text("payout_account_ref"),
     addressLine: text("address_line"),

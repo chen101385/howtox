@@ -189,7 +189,32 @@ export const clientConfigSchema = z.object({
   }),
   modules: z.array(z.enum(ALL_MODULE_IDS as [string, ...string[]])).min(1),
   policies,
-  integrations: z.record(z.string(), z.unknown()),
+  integrations: z.object({
+    formEndpoint: z.string().optional(),
+    analytics: z
+      .object({
+        provider: z.enum(["plausible", "ga4", "posthog"]),
+        id: z.string().min(1),
+      })
+      .optional(),
+    auth: z
+      .object({
+        provider: z.enum(["demo", "supabase", "auth0"]),
+        collectFamilyProfile: z.boolean().optional(),
+      })
+      .optional(),
+    commerce: z.object({ provider: z.enum(["demo", "stripe"]) }).optional(),
+    session: z
+      .object({ provider: z.enum(["demo", "livekit", "daily", "zoom"]) })
+      .optional(),
+    media: z
+      .object({ provider: z.enum(["demo", "mux", "cloudflare"]) })
+      .optional(),
+    messaging: z
+      .object({ provider: z.enum(["demo", "stream"]) })
+      .optional(),
+    bookingEmbedUrl: z.string().optional(),
+  }),
   legal: z
     .object({
       documents: z.array(

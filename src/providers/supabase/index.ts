@@ -77,13 +77,28 @@ async function resolveViewerFromDatabase(
     // before provisioning existed, or a row deleted underneath them. Treating
     // them as signed out is the safe reading.
     console.warn(
-      `[auth] No application user for Supabase id ${externalAuthId} (${email}). ` +
+      `[auth] No application user for Supabase id ${externalAuthId}. ` +
         `Sign out and sign in again to provision one.`
     );
     return null;
   }
 
   return viewerFromUserRow(row);
+}
+
+/**
+ * Header-only identity context. Email is intentionally not added to Viewer,
+ * which is passed broadly and must remain a public/pseudonymous type.
+ */
+export async function getSupabaseViewerContext(): Promise<{
+  viewer: Viewer;
+  email: string;
+} | null> {
+  const { data, error } = await readOnlyClient().auth.getUser();
+  if (error || !data.user?.email) return null;
+
+  const viewer = await resolveViewerFromDatabase(data.user.id, data.user.email);
+  return viewer ? { viewer, email: data.user.email } : null;
 }
 
 /**
@@ -112,6 +127,9 @@ export function createSupabaseAuthProvider(): AuthProvider {
     // out. Failing here beats a deployment that looks configured and silently
     // rejects everybody.
     !process.env.DATABASE_URL && "DATABASE_URL",
+    client.config.integrations.auth?.collectFamilyProfile &&
+      !process.env.AUTH_PROFILE_COOKIE_SECRET &&
+      "AUTH_PROFILE_COOKIE_SECRET",
   ].filter((v): v is string => Boolean(v));
 
   if (missing.length > 0) throw new SupabaseConfigError(missing);
@@ -127,3 +145,9 @@ export function createSupabaseAuthProvider(): AuthProvider {
 export { SupabaseAuthProvider, viewerFromUserRow };
 export { mutableClient, readOnlyClient, supabaseCredentials } from "./session";
 export { ensureUser } from "./provisioning";
+export {
+  clearPendingProfile,
+  createPendingProfileNonce,
+  readPendingProfile,
+  storePendingProfile,
+} from "./pending-profile";

@@ -16,10 +16,12 @@ export function Header({
   brand,
   nav,
   viewerMenu,
+  showSecondaryCta = true,
 }: {
   brand: Brand;
   nav: Navigation;
   viewerMenu?: React.ReactNode;
+  showSecondaryCta?: boolean;
 }) {
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -157,7 +159,7 @@ export function Header({
 
         <div className="ml-auto hidden shrink-0 items-center gap-3 lg:flex">
           {viewerMenu}
-          {nav.secondaryCta && <Button link={nav.secondaryCta} />}
+          {showSecondaryCta && nav.secondaryCta && <Button link={nav.secondaryCta} />}
           {nav.cta && <Button link={nav.cta} />}
         </div>
 
@@ -239,7 +241,9 @@ export function Header({
 
           <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
             {viewerMenu}
-            {nav.secondaryCta && <Button link={nav.secondaryCta} className="w-full" />}
+            {showSecondaryCta && nav.secondaryCta && (
+              <Button link={nav.secondaryCta} className="w-full" />
+            )}
             {nav.cta && <Button link={nav.cta} className="w-full" />}
           </div>
         </Container>

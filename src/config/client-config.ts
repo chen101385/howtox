@@ -173,7 +173,14 @@ export type IntegrationsConfig = {
   formEndpoint?: string;
   analytics?: { provider: "plausible" | "ga4" | "posthog"; id: string };
   /** Provider selection. "demo" adapters require no credentials. */
-  auth?: { provider: "demo" | "supabase" | "auth0" };
+  auth?: {
+    provider: "demo" | "supabase" | "auth0";
+    /**
+     * Collect guardian and child details during sign-in. Kept in client config
+     * because most whitelabels need email-only authentication.
+     */
+    collectFamilyProfile?: boolean;
+  };
   commerce?: { provider: "demo" | "stripe" };
   session?: { provider: "demo" | "livekit" | "daily" | "zoom" };
   media?: { provider: "demo" | "mux" | "cloudflare" };

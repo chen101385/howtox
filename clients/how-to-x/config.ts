@@ -296,6 +296,10 @@ const config: ClientConfig = {
 
   integrations: {
     formEndpoint: "/api/lead",
+    auth: {
+      provider: "demo",
+      collectFamilyProfile: true,
+    },
     // No scheduler is connected. The booking section renders its "not connected
     // yet" placeholder rather than an iframe pointing at a handle nobody owns;
     // add the real embed URL when the calendar exists.

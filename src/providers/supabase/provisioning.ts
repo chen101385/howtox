@@ -22,6 +22,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { PostgresDatabase } from "@/data/postgres/client";
 import { users } from "@/data/postgres/schema";
 import type { TenantId } from "@/domain/ids";
+import type { FamilyProfile } from "@/domain/sign-in-profile";
 
 export type ProvisionedUser = {
   id: string;
@@ -111,12 +112,29 @@ export async function ensureUser(args: {
   tenantId: TenantId;
   externalAuthId: string;
   email: string;
+  profile?: FamilyProfile;
   now?: Date;
 }): Promise<ProvisionedUser> {
-  const { db, tenantId, externalAuthId, email } = args;
+  const { db, tenantId, externalAuthId, email, profile } = args;
 
   const existing = await findByExternalId(db, tenantId, externalAuthId);
-  if (existing) return existing;
+  if (existing) {
+    if (!profile) return existing;
+    const [updated] = await db
+      .update(users)
+      .set({
+        legalFirstName: profile.firstName,
+        legalLastName: profile.lastName,
+        childFirstNames: profile.childFirstNames,
+        childAges: profile.childAges,
+        zipCode: profile.zipCode,
+      })
+      .where(
+        and(eq(users.tenantId, tenantId), eq(users.externalAuthId, externalAuthId))
+      )
+      .returning(publicColumns);
+    if (updated) return updated;
+  }
 
   // An account may already exist for this address — a seeded user, or someone
   // who previously signed in another way. Adopt it rather than creating a
@@ -127,7 +145,18 @@ export async function ensureUser(args: {
   // unverified address, which would be an account-takeover path.
   const adopted = await db
     .update(users)
-    .set({ externalAuthId })
+    .set({
+      externalAuthId,
+      ...(profile
+        ? {
+            legalFirstName: profile.firstName,
+            legalLastName: profile.lastName,
+            childFirstNames: profile.childFirstNames,
+            childAges: profile.childAges,
+            zipCode: profile.zipCode,
+          }
+        : {}),
+    })
     .where(
       and(
         eq(users.tenantId, tenantId),
@@ -146,12 +175,14 @@ export async function ensureUser(args: {
     .values({
       id: `usr_${crypto.randomUUID()}`,
       tenantId,
-      // Legal name is collected later, if a payout ever requires it. An empty
-      // string here is honest: we do not know it, and inventing one from the
-      // email address would put a guess into a legal-identity field.
-      legalFirstName: "",
-      legalLastName: "",
+      // Clients with email-only sign-in do not collect legal names. Empty
+      // strings remain the honest fallback rather than guesses from the email.
+      legalFirstName: profile?.firstName ?? "",
+      legalLastName: profile?.lastName ?? "",
       email,
+      childFirstNames: profile?.childFirstNames ?? [],
+      childAges: profile?.childAges ?? [],
+      zipCode: profile?.zipCode,
       verificationStatus: "unverified",
       displayName: displayNameFromEmail(email),
       displayStyle: "nickname",
