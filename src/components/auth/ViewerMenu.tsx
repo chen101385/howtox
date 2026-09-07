@@ -1,21 +1,8 @@
-import { getProviders, activeAuthProvider } from "@/providers";
+import { activeAuthProvider } from "@/providers";
 import { SIGN_IN_PATH } from "@/providers/supabase";
 
-/**
- * Signed-in state in the header.
- *
- * Renders nothing at all on the demo adapter: seeded personas are not accounts,
- * and a "Sign out" button that signs no one out would be a lie in the nav bar.
- *
- * Sign-out is a form POST rather than a link so it cannot be triggered by a
- * third-party page embedding an image or link to it.
- */
-export async function ViewerMenu() {
-  if (activeAuthProvider() === "demo") return null;
-
-  const viewer = await getProviders().auth.getViewer();
-
-  if (!viewer) {
+export function ViewerMenuContent({ email }: { email?: string }) {
+  if (!email) {
     return (
       <a
         href={SIGN_IN_PATH}
@@ -28,9 +15,7 @@ export async function ViewerMenu() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden text-sm text-muted sm:inline">
-        {viewer.displayName}
-      </span>
+      <span className="text-sm text-muted">Signed in as {email}</span>
       <form action="/api/auth/sign-out" method="post">
         <button
           type="submit"
@@ -41,4 +26,34 @@ export async function ViewerMenu() {
       </form>
     </div>
   );
+}
+
+/**
+ * Signed-in state in the header.
+ *
+ * Renders nothing at all on the demo adapter: seeded personas are not accounts,
+ * and a "Sign out" button that signs no one out would be a lie in the nav bar.
+ *
+ * Sign-out is a form POST rather than a link so it cannot be triggered by a
+ * third-party page embedding an image or link to it.
+ */
+export async function loadViewerMenu(): Promise<{
+  menu: React.ReactNode;
+  signedIn: boolean;
+}> {
+  if (activeAuthProvider() === "demo") {
+    return { menu: null, signedIn: false };
+  }
+
+  const { getSupabaseViewerContext } = await import("@/providers/supabase");
+  const context = await getSupabaseViewerContext();
+
+  return {
+    menu: <ViewerMenuContent email={context?.email} />,
+    signedIn: Boolean(context),
+  };
+}
+
+export async function ViewerMenu() {
+  return (await loadViewerMenu()).menu;
 }

@@ -176,6 +176,10 @@ export const users = pgTable(
     legalFirstName: text("legal_first_name").notNull(),
     legalLastName: text("legal_last_name").notNull(),
     email: text("email").notNull(),
+    childFirstNames: text("child_first_names").array().notNull().default([]),
+    childAges: integer("child_ages").array().notNull().default([]),
+    /** Nullable only so legacy/demo rows survive the profile-field migration. */
+    zipCode: text("zip_code"),
     phone: text("phone"),
     payoutAccountRef: text("payout_account_ref"),
     addressLine: text("address_line"),
@@ -198,6 +202,7 @@ export const users = pgTable(
     roles: roleEnum("roles").array().notNull().default(["guest"]),
     /** Set when an external identity provider (e.g. Supabase Auth) owns the login. */
     externalAuthId: text("external_auth_id"),
+    lastSuccessfulLogin: timestamp("last_successful_login", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

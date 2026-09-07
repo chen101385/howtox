@@ -29,6 +29,20 @@
       "when": 1788195387391,
       "tag": "0003_rate_limit_counters",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788557978119,
+      "tag": "0004_how_to_x_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788559344862,
+      "tag": "0005_last_successful_login",
+      "breakpoints": true
     }
   ]
 }

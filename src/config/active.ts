@@ -7,6 +7,7 @@ import mentorAcademy from "@clients/mentor-academy/config";
 import collective from "@clients/collective/config";
 import template from "@clients/_template/config";
 import experienceDemo from "@clients/experience-demo/client";
+import howToX from "@clients/how-to-x/config";
 
 /**
  * Registry of available clients. Legacy `SiteConfig` and current `ClientConfig`
@@ -20,11 +21,12 @@ const registry: Record<string, SiteConfig | ClientConfig> = {
   "mentor-academy": mentorAcademy,
   collective: collective,
   "experience-demo": experienceDemo,
+  "how-to-x": howToX,
 };
 
 export const CLIENT_SLUGS = Object.keys(registry);
 
-const DEFAULT_CLIENT = "teen-edge";
+const DEFAULT_CLIENT = "how-to-x";
 
 /**
  * Which client this build serves. In the one-deploy-per-client model, set

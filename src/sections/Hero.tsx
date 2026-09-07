@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Hero as HeroConfig } from "@/config/types";
 import { Container } from "@/components/Container";
 import { Button } from "@/components/Button";
@@ -45,16 +46,18 @@ export function Hero({ hero }: { hero: HeroConfig }) {
 
         {/* Media slot: uses the config image when present, otherwise a themed
             placeholder so the layout is complete before assets are added. */}
-        <div className="relative">
+        <div className="relative aspect-video overflow-hidden rounded-theme border border-border shadow-sm">
           {hero.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={hero.image.src}
               alt={hero.image.alt}
-              className="w-full rounded-theme border border-border object-cover shadow-sm"
+              fill
+              priority
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
             />
           ) : (
-            <div className="aspect-[4/3] w-full rounded-theme border border-border bg-gradient-to-br from-primary/15 via-surface to-accent/15" />
+            <div className="h-full w-full bg-gradient-to-br from-primary/15 via-surface to-accent/15" />
           )}
         </div>
       </Container>

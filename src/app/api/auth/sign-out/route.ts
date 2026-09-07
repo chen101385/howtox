@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { activeAuthProvider } from "@/providers";
-import { mutableClient } from "@/providers/supabase";
+import { clearSessionLifetime, mutableClient } from "@/providers/supabase";
 
 /**
  * Sign-out.
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   }
 
   const { error } = await mutableClient().auth.signOut();
+  clearSessionLifetime();
   if (error) console.error("[auth] sign-out failed:", error.message);
 
   // Redirect regardless. The cookies are cleared either way, and leaving

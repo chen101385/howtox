@@ -51,6 +51,7 @@ jobs:
           - collective
           - template
           - experience-demo
+          - how-to-x
     steps:
       - uses: actions/checkout@v4
 

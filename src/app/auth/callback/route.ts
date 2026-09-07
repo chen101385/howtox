@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
+import { client } from "@/config/active";
 import { CURRENT_TENANT } from "@/data";
 import { getDatabase } from "@/data/postgres/client";
 import { activeAuthProvider } from "@/providers";
-import { SIGN_IN_PATH, ensureUser, mutableClient } from "@/providers/supabase";
+import {
+  SIGN_IN_PATH,
+  SIGN_UP_PATH,
+  clearPendingProfile,
+  ensureUser,
+  mutableClient,
+  readPendingProfile,
+  recordSuccessfulLogin,
+  startSessionLifetime,
+} from "@/providers/supabase";
 import { safeRedirectPath } from "@/lib/redirect";
 
 /**
@@ -22,8 +32,10 @@ import { safeRedirectPath } from "@/lib/redirect";
  */
 export const dynamic = "force-dynamic";
 
-function failure(request: Request, reason: string) {
-  const url = new URL(SIGN_IN_PATH, request.url);
+type AuthFlow = "log-in" | "sign-up";
+
+function failure(request: Request, flow: AuthFlow, reason: string) {
+  const url = new URL(flow === "sign-up" ? SIGN_UP_PATH : SIGN_IN_PATH, request.url);
   url.searchParams.set("error", reason);
   return NextResponse.redirect(url);
 }
@@ -37,11 +49,16 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
+  const flow = requestUrl.searchParams.get("flow");
+  const profileNonce = requestUrl.searchParams.get("profile");
   const next = safeRedirectPath(requestUrl.searchParams.get("next"));
+  if (flow !== "log-in" && flow !== "sign-up") {
+    return failure(request, "log-in", "link_invalid");
+  }
 
   // Supabase reports its own failures (expired or already-used link) here.
   if (requestUrl.searchParams.get("error")) {
-    return failure(request, "link_invalid");
+    return failure(request, flow, "link_invalid");
   }
 
   const supabase = mutableClient();
@@ -50,7 +67,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error("[auth] code exchange failed:", error.message);
-      return failure(request, "link_invalid");
+      return failure(request, flow, "link_invalid");
     }
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({
@@ -61,33 +78,60 @@ export async function GET(request: Request) {
     });
     if (error) {
       console.error("[auth] OTP verification failed:", error.message);
-      return failure(request, "link_invalid");
+      return failure(request, flow, "link_invalid");
     }
   } else {
-    return failure(request, "link_invalid");
+    return failure(request, flow, "link_invalid");
   }
 
   // Re-read from the auth server rather than trusting what the exchange
   // returned locally.
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user?.email) {
-    return failure(request, "link_invalid");
+    return failure(request, flow, "link_invalid");
+  }
+
+  const db = getDatabase(process.env.DATABASE_URL ?? "");
+  const loginAt = new Date();
+
+  if (flow === "log-in") {
+    const existing = await recordSuccessfulLogin({
+      db,
+      tenantId: CURRENT_TENANT,
+      externalAuthId: data.user.id,
+      at: loginAt,
+    });
+    if (!existing) {
+      await supabase.auth.signOut();
+      return failure(request, flow, "account_not_found");
+    }
+    await startSessionLifetime(loginAt.getTime());
+    return NextResponse.redirect(new URL(next, request.url));
   }
 
   try {
+    const profile = readPendingProfile(data.user.email, profileNonce);
+    if (client.config.integrations.auth?.collectFamilyProfile && !profile) {
+      throw new Error("The pending family profile is missing, expired, or invalid.");
+    }
+
     await ensureUser({
-      db: getDatabase(process.env.DATABASE_URL ?? ""),
+      db,
       tenantId: CURRENT_TENANT,
       externalAuthId: data.user.id,
       email: data.user.email,
+      profile,
+      lastSuccessfulLogin: loginAt,
     });
+    if (profile) clearPendingProfile();
+    await startSessionLifetime(loginAt.getTime());
   } catch (cause) {
     // The session cookie is already set at this point. Signing out again avoids
     // stranding someone in the state the adapter warns about: authenticated to
     // Supabase, but with no account for anything to resolve.
     console.error("[auth] provisioning failed:", cause);
     await supabase.auth.signOut();
-    return failure(request, "provisioning_failed");
+    return failure(request, flow, "provisioning_failed");
   }
 
   return NextResponse.redirect(new URL(next, request.url));

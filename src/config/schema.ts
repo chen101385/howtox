@@ -31,6 +31,21 @@ const link = z.object({
   href: z.string().min(1),
   emphasized: z.boolean().optional(),
   external: z.boolean().optional(),
+  requiresAuth: z.boolean().optional(),
+});
+
+const megaMenuItem = z.object({
+  label: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  groups: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        links: z.array(link).min(1),
+      })
+    )
+    .min(1),
 });
 
 const termPair = z.object({
@@ -148,7 +163,19 @@ export const clientConfigSchema = z.object({
     }),
     theme: themeConfig,
     contact: z.unknown().optional(),
-    nav: z.object({ links: z.array(link), cta: link.optional() }),
+    nav: z.object({
+      links: z.array(link),
+      megaMenu: z.array(megaMenuItem).min(1).optional(),
+      authCtas: z
+        .object({
+          signUp: link,
+          signIn: link,
+        })
+        .optional(),
+      secondaryCta: link.optional(),
+      ctaRequiresAuth: z.boolean().optional(),
+      cta: link.optional(),
+    }),
     seo: z.object({
       title: z.string().min(1),
       description: z.string().min(1),
@@ -170,7 +197,39 @@ export const clientConfigSchema = z.object({
   }),
   modules: z.array(z.enum(ALL_MODULE_IDS as [string, ...string[]])).min(1),
   policies,
-  integrations: z.record(z.string(), z.unknown()),
+  integrations: z.object({
+    formEndpoint: z.string().optional(),
+    analytics: z
+      .object({
+        provider: z.enum(["plausible", "ga4", "posthog"]),
+        id: z.string().min(1),
+      })
+      .optional(),
+    auth: z
+      .object({
+        provider: z.enum(["demo", "supabase", "auth0"]),
+        collectFamilyProfile: z.boolean().optional(),
+      })
+      .optional(),
+    commerce: z.object({ provider: z.enum(["demo", "stripe"]) }).optional(),
+    session: z
+      .object({ provider: z.enum(["demo", "livekit", "daily", "zoom"]) })
+      .optional(),
+    media: z
+      .object({ provider: z.enum(["demo", "mux", "cloudflare"]) })
+      .optional(),
+    messaging: z
+      .object({ provider: z.enum(["demo", "stream"]) })
+      .optional(),
+    scheduler: z
+      .object({
+        provider: z.literal("cal.com"),
+        embedUrl: z.string().url().optional(),
+        authRequired: z.boolean().optional(),
+      })
+      .optional(),
+    bookingEmbedUrl: z.string().optional(),
+  }),
   legal: z
     .object({
       documents: z.array(

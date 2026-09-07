@@ -5,7 +5,7 @@ import { themeToCssVars } from "@/theme/theme";
 import { Header } from "@/sections/Header";
 import { Footer } from "@/sections/Footer";
 import { DemoModeBanner } from "@/components/marketplace/DemoModeBanner";
-import { ViewerMenu } from "@/components/auth/ViewerMenu";
+import { loadViewerMenu } from "@/components/auth/ViewerMenu";
 import { mockedProviders } from "@/providers";
 
 const site = client.config.site;
@@ -26,12 +26,13 @@ export const metadata: Metadata = {
  * contributions (Discover, Become a Host) appear only when the enabling modules
  * and capabilities are present.
  */
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Only marketplace clients have third-party integrations worth disclosing —
   // a brochure site has nothing simulated to warn about. Which ones are still
   // mocks comes from the providers themselves, so the banner stays accurate as
   // real adapters land one at a time.
   const mocked = client.has("commerce.checkout") ? mockedProviders() : [];
+  const viewerMenu = await loadViewerMenu();
 
   return (
     <html lang="en" data-mode={site.theme.mode ?? "light"}>
@@ -40,7 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           entire look, with no CSS changes. */}
       <body style={themeToCssVars(site.theme)}>
         <DemoModeBanner mocked={mocked} />
-        <Header brand={site.brand} nav={client.nav} viewerMenu={<ViewerMenu />} />
+        <Header
+          brand={site.brand}
+          nav={client.nav}
+          viewerMenu={viewerMenu.menu}
+          viewerSignedIn={viewerMenu.signedIn}
+        />
         <main>{children}</main>
         <Footer
           brand={site.brand}

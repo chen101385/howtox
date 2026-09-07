@@ -22,6 +22,10 @@ import { and, eq, sql } from "drizzle-orm";
 import type { PostgresDatabase } from "@/data/postgres/client";
 import { users } from "@/data/postgres/schema";
 import type { TenantId } from "@/domain/ids";
+import {
+  familyProfileSchema,
+  type FamilyProfile,
+} from "@/domain/sign-in-profile";
 
 export type ProvisionedUser = {
   id: string;
@@ -87,7 +91,7 @@ async function availableHandle(
   return `${stem}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-async function findByExternalId(
+export async function findProvisionedUser(
   db: PostgresDatabase,
   tenantId: TenantId,
   externalAuthId: string
@@ -111,12 +115,47 @@ export async function ensureUser(args: {
   tenantId: TenantId;
   externalAuthId: string;
   email: string;
+  profile?: FamilyProfile;
+  lastSuccessfulLogin?: Date;
   now?: Date;
 }): Promise<ProvisionedUser> {
-  const { db, tenantId, externalAuthId, email } = args;
+  const {
+    db,
+    tenantId,
+    externalAuthId,
+    email,
+    profile,
+    lastSuccessfulLogin,
+  } = args;
+  // Re-validate at the persistence boundary too. Callers other than the HTTP
+  // route cannot bypass pair alignment, age bounds, or canonical sorting.
+  const normalizedProfile = profile
+    ? familyProfileSchema.parse(profile)
+    : undefined;
 
-  const existing = await findByExternalId(db, tenantId, externalAuthId);
-  if (existing) return existing;
+  const existing = await findProvisionedUser(db, tenantId, externalAuthId);
+  if (existing) {
+    if (!normalizedProfile && !lastSuccessfulLogin) return existing;
+    const [updated] = await db
+      .update(users)
+      .set({
+        ...(normalizedProfile
+          ? {
+              legalFirstName: normalizedProfile.firstName,
+              legalLastName: normalizedProfile.lastName,
+              childFirstNames: normalizedProfile.childFirstNames,
+              childAges: normalizedProfile.childAges,
+              zipCode: normalizedProfile.zipCode,
+            }
+          : {}),
+        ...(lastSuccessfulLogin ? { lastSuccessfulLogin } : {}),
+      })
+      .where(
+        and(eq(users.tenantId, tenantId), eq(users.externalAuthId, externalAuthId))
+      )
+      .returning(publicColumns);
+    if (updated) return updated;
+  }
 
   // An account may already exist for this address — a seeded user, or someone
   // who previously signed in another way. Adopt it rather than creating a
@@ -127,7 +166,19 @@ export async function ensureUser(args: {
   // unverified address, which would be an account-takeover path.
   const adopted = await db
     .update(users)
-    .set({ externalAuthId })
+    .set({
+      externalAuthId,
+      ...(normalizedProfile
+        ? {
+            legalFirstName: normalizedProfile.firstName,
+            legalLastName: normalizedProfile.lastName,
+            childFirstNames: normalizedProfile.childFirstNames,
+            childAges: normalizedProfile.childAges,
+            zipCode: normalizedProfile.zipCode,
+          }
+        : {}),
+      ...(lastSuccessfulLogin ? { lastSuccessfulLogin } : {}),
+    })
     .where(
       and(
         eq(users.tenantId, tenantId),
@@ -146,18 +197,21 @@ export async function ensureUser(args: {
     .values({
       id: `usr_${crypto.randomUUID()}`,
       tenantId,
-      // Legal name is collected later, if a payout ever requires it. An empty
-      // string here is honest: we do not know it, and inventing one from the
-      // email address would put a guess into a legal-identity field.
-      legalFirstName: "",
-      legalLastName: "",
+      // Clients with email-only sign-in do not collect legal names. Empty
+      // strings remain the honest fallback rather than guesses from the email.
+      legalFirstName: normalizedProfile?.firstName ?? "",
+      legalLastName: normalizedProfile?.lastName ?? "",
       email,
+      childFirstNames: normalizedProfile?.childFirstNames ?? [],
+      childAges: normalizedProfile?.childAges ?? [],
+      zipCode: normalizedProfile?.zipCode,
       verificationStatus: "unverified",
       displayName: displayNameFromEmail(email),
       displayStyle: "nickname",
       handle,
       roles: ["guest"],
       externalAuthId,
+      lastSuccessfulLogin,
       createdAt: args.now ?? new Date(),
     })
     .onConflictDoNothing()
@@ -167,7 +221,7 @@ export async function ensureUser(args: {
 
   // Lost a race, or hit the email/handle unique index. Re-read: the winner's row
   // is the correct answer for both.
-  const settled = await findByExternalId(db, tenantId, externalAuthId);
+  const settled = await findProvisionedUser(db, tenantId, externalAuthId);
   if (settled) return settled;
 
   throw new Error(
@@ -175,4 +229,27 @@ export async function ensureUser(args: {
       `but no row with that external id exists — most likely the email or handle ` +
       `is already taken by an account linked to a different identity.`
   );
+}
+
+/**
+ * Records only callbacks that established a verified session for an existing
+ * application account. A missing row stays missing; log-in never provisions.
+ */
+export async function recordSuccessfulLogin(args: {
+  db: PostgresDatabase;
+  tenantId: TenantId;
+  externalAuthId: string;
+  at: Date;
+}): Promise<ProvisionedUser | undefined> {
+  const [updated] = await args.db
+    .update(users)
+    .set({ lastSuccessfulLogin: args.at })
+    .where(
+      and(
+        eq(users.tenantId, args.tenantId),
+        eq(users.externalAuthId, args.externalAuthId)
+      )
+    )
+    .returning(publicColumns);
+  return updated;
 }

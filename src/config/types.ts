@@ -31,6 +31,20 @@ export type Link = {
   /** Renders as a button when true; plain link otherwise. */
   emphasized?: boolean;
   external?: boolean;
+  /** Conversion action hidden until a server-verified viewer is signed in. */
+  requiresAuth?: boolean;
+};
+
+export type MegaMenuGroup = {
+  label: string;
+  links: Link[];
+};
+
+export type MegaMenuItem = {
+  label: string;
+  title: string;
+  description: string;
+  groups: MegaMenuGroup[];
 };
 
 export type IconName = string; // maps to an icon registry entry (see components/Icon)
@@ -230,6 +244,17 @@ export type Seo = {
 
 export type Navigation = {
   links: Link[];
+  /** Optional full-width dropdown navigation. Flat links remain the fallback. */
+  megaMenu?: MegaMenuItem[];
+  /** Account creation and returning-user actions shown only while signed out. */
+  authCtas?: {
+    signUp: Link;
+    signIn: Link;
+  };
+  /** Supporting action shown before the primary CTA. */
+  secondaryCta?: Link;
+  /** Hide the primary action until the server has resolved a signed-in viewer. */
+  ctaRequiresAuth?: boolean;
   cta?: Link;
 };
 

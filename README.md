@@ -15,17 +15,20 @@ coding conventions.
 
 ```bash
 npm install
-npm run dev                                   # default client (teen-edge)
+npm run dev                                   # default client (how-to-x)
 ```
 
 Run a specific client:
 
 ```bash
+NEXT_PUBLIC_CLIENT=how-to-x npm run dev       # same as the plain `npm run dev`
 NEXT_PUBLIC_CLIENT=experience-demo npm run dev
+NEXT_PUBLIC_CLIENT=teen-edge npm run dev
 ```
 
 | Slug | What it is |
 |---|---|
+| `how-to-x` | **Appointments business** ("How to X") — the default `npm run dev` client |
 | `teen-edge` | Coaching brochure + booking embed (legacy `SiteConfig`) |
 | `mentor-academy` | Coaching + content modules (legacy) |
 | `collective` | Community brochure, dark theme (legacy) |

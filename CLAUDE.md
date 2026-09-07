@@ -11,7 +11,7 @@ experiences. Which one a build serves is decided by `NEXT_PUBLIC_CLIENT`.
 ## Commands
 
 ```bash
-npm run dev                                   # default client (teen-edge)
+npm run dev                                   # default client (how-to-x)
 NEXT_PUBLIC_CLIENT=experience-demo npm run dev
 AUTH_PROVIDER=supabase npm run dev            # real sign-in (needs credentials)
 npm run typecheck                             # tsc --noEmit

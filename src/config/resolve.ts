@@ -18,7 +18,7 @@ import {
 import { createTerms, type Terms } from "./terminology";
 import { validateClientConfig } from "./schema";
 import { toClientConfig } from "./normalize";
-import type { ClientConfig, Link } from "./client-config";
+import type { ClientConfig, Link, Navigation } from "./client-config";
 import type { SiteConfig } from "./types";
 
 export type ResolvedClient = {
@@ -28,7 +28,7 @@ export type ResolvedClient = {
   modules: ModuleId[];
   capabilities: ReadonlySet<CapabilityId>;
   /** Client nav links plus capability-gated module contributions. */
-  nav: { links: Link[]; cta?: Link };
+  nav: Navigation;
   adminSurfaces: AdminSurface[];
   has: (...caps: CapabilityId[]) => boolean;
   hasModule: (id: ModuleId) => boolean;
@@ -54,8 +54,8 @@ export function resolveClient(input: SiteConfig | ClientConfig): ResolvedClient 
     modules,
     capabilities,
     nav: {
+      ...config.site.nav,
       links: [...config.site.nav.links, ...moduleLinks],
-      cta: config.site.nav.cta,
     },
     adminSurfaces: resolveAdminSurfaces(modules, capabilities),
     has: (...caps) => caps.every((c) => capabilities.has(c)),
