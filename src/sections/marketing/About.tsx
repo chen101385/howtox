@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Sections } from "@/config/types";
 import { Container } from "@/components/Container";
 
@@ -32,16 +33,17 @@ export function About({ about }: { about: NonNullable<Sections["about"]> }) {
 
         {/* Media slot: uses the config image when present, otherwise a themed
             placeholder so the layout is complete before assets are added. */}
-        <div className="relative">
+        <div className="relative aspect-video overflow-hidden rounded-theme border border-border shadow-sm">
           {about.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={about.image.src}
               alt={about.image.alt}
-              className="w-full rounded-theme border border-border object-cover shadow-sm"
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
             />
           ) : (
-            <div className="aspect-[4/3] w-full rounded-theme border border-border bg-gradient-to-br from-accent/15 via-bg to-primary/15" />
+            <div className="h-full w-full bg-gradient-to-br from-accent/15 via-bg to-primary/15" />
           )}
         </div>
       </Container>

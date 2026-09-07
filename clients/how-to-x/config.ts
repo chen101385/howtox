@@ -153,6 +153,10 @@ const config: ClientConfig = {
         headline: "The thing you've been circling has a next step",
         subheadline:
           "How to X is a working session, not a pep talk. Bring the skill, project, or decision that's been sitting in the back of your mind. We'll name it, cut it down to size, and book the work.",
+        image: {
+          src: "/images/how-to-x/park_swim_lesson_landingpage_1.png",
+          alt: "A mentor leading a group of children in an outdoor park activity",
+        },
         ctaPrimary: {
           label: "Book a first session",
           href: "#booking",
@@ -193,6 +197,10 @@ const config: ClientConfig = {
         heading: "How a session actually goes",
         body:
           "You book a time. Before we meet, you send a short note about the X — a skill you want, a project that's stalled, a decision you keep postponing. We spend the session on that, not on a generic intake. You get a written recap the same day: what we named, what you're trying next, and when it makes sense to meet again. If it doesn't, that's a fine outcome too.",
+        image: {
+          src: "/images/how-to-x/mentorship_dancing_landingpage_1.png",
+          alt: "A mentor and child practicing dance steps together",
+        },
         stats: [
           { value: "1:1", label: "every session" },
           { value: "Same day", label: "written recap" },
